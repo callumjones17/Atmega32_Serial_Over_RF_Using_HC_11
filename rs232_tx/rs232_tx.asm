@@ -9,10 +9,10 @@
 
 .org 0x00
 .def  temp  = r16
-.def SER_OUT = r17
-.def SER_OUT_TEMP = r18
+.def SER_OUT = r19
+.def SER_OUT_TEMP = r20
 .equ delayBaud = 205
-.def delay_reg = r20
+.def delay_reg = r18
 .def temp2 = r19
 
 ; Define here Reset and interrupt vectors, if any
