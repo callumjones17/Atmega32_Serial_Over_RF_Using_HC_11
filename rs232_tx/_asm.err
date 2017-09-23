@@ -1,0 +1,17 @@
+Creating   'rs232_tx.eep'
+Creating   'rs232_tx.hex'
+Creating   'rs232_tx.obj'
+Creating   'rs232_tx.lis'
+Creating   'rs232_tx.map'
+
+Assembling 'rs232_tx.asm'
+Including  'C:\2256\VMLAB\include\m32def.inc'
+
+Program memory usage:
+Code             :  258 words
+Constants (dw/db):    0 words
+Unused           :    0 words
+Total            :  258 words
+
+Assembly complete with no errors.
+Deleting   'rs232_tx.eep'
