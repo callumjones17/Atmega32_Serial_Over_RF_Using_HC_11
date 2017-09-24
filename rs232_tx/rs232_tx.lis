@@ -1,10 +1,25 @@
 
-AVRASM ver. 1.74  rs232_tx.asm Sun Sep 24 09:42:57 2017
+AVRASM ver. 1.74  rs232_tx.asm Mon Sep 25 09:21:52 2017
 
 
-         ; ******************************************************
-         ; BASIC .ASM template file for AVR
-         ; ******************************************************
+         ;*********************************
+         ;***	RS232 Transmitter Code  ****
+         ;*********************************
+         ;This program is intened for use with the ATMEGA32,
+         ;where pin 8 of portb is set up as the TX. This program,
+         ;continuously sends the ascii code for 'C' -> 0x43 over
+         ;the serial pin.
+         
+         ;RS232 Settings:
+         ;Baud - 9600
+         ;Stop Bit - 1 or 2 (Won't affect the program, unless your sending serial really quickly, in which case stop bits is 1)
+         ;Data Bits - 8
+         ;No Parity Bits.
+         
+         ;2256 - Introduction into Embedded Systems - 2017
+         ;Callum Jones
+         ;RMIT
+         
          
           .include "C:\2256\VMLAB\include\m32def.inc"
          ;***************************************************************************
@@ -506,19 +521,14 @@ AVRASM ver. 1.74  rs232_tx.asm Sun Sep 24 09:42:57 2017
          
          
          
-         ; Define here the variables
-         ;
-         
-          .org 0x00
-          .def  temp  = r16
-          .def SER_OUT = r17
-          .def SER_OUT_TEMP = r18
-          .equ delayBaud = 205
-          .def delay_reg = r20
+          .def  temp  = r16		;Define registers 16-19 for use as varibles
+          .def delay_reg = r18
           .def temp2 = r19
+          .def SER_OUT_TEMP = r21
+          .def SER_OUT = r20
          
-         ; Define here Reset and interrupt vectors, if any
-         ;
+          .equ delayBaud = 205 	;Define a counter value for the delay function (see delay_baud).
+         
           reset:
 000000 c00f         rjmp start
 000001 9518         reti      ; Addr $01
@@ -541,32 +551,32 @@ AVRASM ver. 1.74  rs232_tx.asm Sun Sep 24 09:42:57 2017
          
          ;
           start:
-000010 e50f         ldi temp, low(RAMEND)  ;Init the stack pointer Low
+000010 e50f         ldi temp, low(RAMEND) 	;Setup the stack pointer to the bottom or RAM, so its out of the way. Stack pointer decrements, when items are pushed onto it.
 000011 bf0d         out SPL, temp
-000012 e008         ldi temp, high(RAMEND) ;Init the stack pointer high
+000012 e008         ldi temp, high(RAMEND)
 000013 bf0e         out SPH, temp
-000014 e800      	ldi temp, 0x80         ; Init pin 0 of port B, which will be the serial port.
-000015 bb07      	out DDRB, temp
-000016 940e 0049 	call delay_baud
+000014 e800      	ldi temp, 0x80         ; Init pin 7 of port B, which will be the serial port.
+000015 bb07      	out DDRB, temp         ; Setup data direction register ddrb to configure pin 7 as output (1, 0 for input).
+000016 940e 0049 	call delay_baud        ; let things settle in the ddrb register.
 000018 e800      	ldi temp, 0x80
 000019 bb08      	out PORTB, temp		  ; Set the pin high, as a change from low to high initiates the serial protocol.
          	
-00001a e413      	ldi SER_OUT, 0x43      ;This is a test variable. In ascii it 0x43 is 'C'
+00001a e443      	ldi SER_OUT, 0x43      ;This is a test variable. In ascii 0x43 is 'C'
          	
          
          
          
           forever:
 00001b 0000         nop
-00001c 0000         nop       ; Infinite loop.
-00001d 0000         nop       ; Define your main system
-00001e 0000         nop       ; behaviour here
-00001f 940e 0050    call Delay   ;Delay for a while before sending over the port again.
-000021 940e 0050    call Delay
-000023 940e 0050    call Delay
+00001c 0000         nop
+00001d 0000         nop
+00001e 0000         nop
+00001f 940e 0050    call Delay   ;Delay for a while before sending over the port again (1.68s)
+000021 940e 0050    call Delay   ;1.68s
+000023 940e 0050    call Delay   ;1.68s
 000025 940e 002d    call transmit_serial    ;Transmit using the serial interface.
 000027 940e 0049    call delay_baud         ;Delay a bit more
-000029 e413         ldi SER_OUT, 0x43       ;Reset the output
+000029 e443         ldi SER_OUT, 0x43       ;Reset the register holding the value to be sent, rotating (see transmit serial) corrupts the data, for the next loop.
 00002a 940e 0050    call Delay              ;Delay a bit more.
          
 00002c cfee      rjmp forever
@@ -574,49 +584,61 @@ AVRASM ver. 1.74  rs232_tx.asm Sun Sep 24 09:42:57 2017
          
          
           transmit_serial:
-00002d 2722         clr ser_out_temp		;Clear a temporary varible for use.
+00002d 2755         clr ser_out_temp		;Clear a temporary varible for use.
          
-00002e ef0f      	ldi temp, 0xff			;Make serial port is already high.
+00002e ef0f      	ldi temp, 0xff			;Make sure serial port is already high.
 00002f bb08      	out portb, temp
 000030 940e 0049 	call delay_baud
          	
 000032 940e 0049 	call delay_baud 			;Start bit requires a high to low change.
-000034 e000      	ldi temp, 0x00
-000035 bb08      	out portb, temp
+000034 e000      	ldi temp, 0x00          ;Load 0 into temp.
+000035 bb08      	out portb, temp         ;Will set pin 7 low.
          	
-000036 933f      	push temp2
-000037 e038      	ldi temp2, 0x08
+000036 933f      	push temp2          		;just incase its used elsewhere, push the contents onto the stack.
+000037 e038      	ldi temp2, 0x08         ;Load the number of data bits into the register.
          	
           write_bit:
-000038 940e 0049 	call delay_baud 			;Send First Bit
-00003a 9517         ror ser_out
-00003b 9527         ror ser_out_temp
-00003c bb28      	out portb, ser_out_temp
-00003d 953a      	dec temp2
-00003e f7c9      	brne write_bit
+000038 940e 0049 	call delay_baud 			;Delay by baud period.
+00003a 9547         ror ser_out             ;rotate right, so that bit 0 (sent first) is moved into carry register.
+00003b 9557         ror ser_out_temp        ;rotate right, so the carry contents, is moved into bit 7 of ser_out temp.
+00003c bb58      	out portb, ser_out_temp ;output to portb.
+00003d 953a      	dec temp2               ;decrement the data bit counter
+00003e f7c9      	brne write_bit          ;If data bit counter is zero, then continue, otherwise go back and write another bit.
          	
-00003f 913f      	pop temp2
+00003f 913f      	pop temp2               ;Pull the value of temp2 from the stack and back into temp2.
          	
-000040 940e 0049 	call delay_baud			;Stop bit requires a high
-000042 ef0f      	ldi temp, 0xff
-000043 bb08      	out portb, temp
+000040 940e 0049 	call delay_baud			;Delay baud before send stop bit.
+000042 ef0f      	ldi temp, 0xff          ;Stop bit requires a high
+000043 bb08      	out portb, temp         ;Output high on pin 7.
 000044 940e 0049 	call delay_baud
 000046 940e 0049 	call delay_baud			;Technically, this is an extra stop bit. But a single stop bit reciever will also work.
 000048 9508      	ret
          
          
-         ;102uS = (205 * 6) + 5 * 83.33nS, baud rate is about 104uS	
-          delay_baud:
-000049 ec4d      	ldi delay_reg, DelayBaud
+         	
+         ;----------------------
+         ;delay_baud:
+         ;	Delays the sampler by the baud period, 104uS.
+         ;  Using the instruction set manual for avr, the following was determined:
+         ;	103uS = (205 * 6) + 5 * 83.33nS, baud rate is about 104uS
+         ;  Where 205 is the number stored in DelayBaud and 6 (2 for brne) is the number of cycles in the loop.
+         ;  The extra 5 are for the return and ldi at the start.
+         ;----------------------	
+          delay_baud: 							
+000049 ec2d      	ldi delay_reg, DelayBaud      ;Load the counter value from program memory into delay_reg, 1 cycle
           db_l:
-00004a 954a      	dec delay_reg
-00004b 0000      	nop
+00004a 952a      	dec delay_reg                 ;decrement the counter delay reg - 1 cycle
+00004b 0000      	nop                           ;nop - 1 cycle
 00004c 0000      	nop
 00004d 0000      	nop
-00004e f7d9      	brne db_l
+00004e f7d9      	brne db_l                     ; if not equal to zero, redo the loop again, otherwise return (2 cycles).
 00004f 9508      	ret
-         
-         
+         	
+         ;--------------------
+         ;Delay:
+         ;	Calls a lot of 21mS delay routines
+         ;	80 Delay_more's = 80*21mS = 1.68s
+         ;--------------------
           Delay:
 000050 940e 00f1 	call Delay_more
 000052 940e 00f1 	call Delay_more
@@ -700,10 +722,14 @@ AVRASM ver. 1.74  rs232_tx.asm Sun Sep 24 09:42:57 2017
 0000ee 940e 00f1 	call Delay_more
 0000f0 9508      	ret
          
-         
-         
-         
-         
+         ;--------------------
+         ;delay_more:
+         ;	Uses inner and outer loop to delay
+         ; 	processor by 21mS. Each loop decrements counters,
+         ; 	from 255 down to zero.
+         ; 	Based on this:
+         ;	4 cycles times 256 * 256 * 83.3 *10e-9 = about 21mS
+         ;--------------------
           Delay_more:
 0000f1 930f               PUSH R16						
 0000f2 931f               PUSH R17
@@ -713,7 +739,7 @@ AVRASM ver. 1.74  rs232_tx.asm Sun Sep 24 09:42:57 2017
 0000f6 2711               CLR R17
 0000f7 950a      L1:      DEC R16
 0000f8 1100      			CPSE R16, R0
-0000f9 cffd      			RJMP L1	     ;4 cycles times 256 * 256 * 83.3 *10e-9 = about 21mS
+0000f9 cffd      			RJMP L1	
 0000fa 2700      			CLR R16		
 0000fb 951a      L2:      DEC R17
 0000fc 1110               CPSE R17, R0
@@ -723,6 +749,7 @@ AVRASM ver. 1.74  rs232_tx.asm Sun Sep 24 09:42:57 2017
 0000ff 911f               POP R17
 000100 910f               POP R16
 000101 9508               RET
+         
          
          
          

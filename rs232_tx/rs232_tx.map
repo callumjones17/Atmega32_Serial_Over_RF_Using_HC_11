@@ -1,5 +1,5 @@
 
-AVRASM ver. 1.74  rs232_tx.asm Sun Sep 24 09:42:57 2017
+AVRASM ver. 1.74  rs232_tx.asm Mon Sep 25 09:21:52 2017
 
 
 EQU  sreg         0000003f
@@ -371,11 +371,11 @@ EQU  aciaddr      00000024
 EQU  twsiaddr     00000026
 EQU  spmraddr     00000028
 DEF  temp         r16
-DEF  ser_out      r17
-DEF  ser_out_temp r18
-EQU  delaybaud    000000cd
-DEF  delay_reg    r20
+DEF  delay_reg    r18
 DEF  temp2        r19
+DEF  ser_out_temp r21
+DEF  ser_out      r20
+EQU  delaybaud    000000cd
 CSEG reset        00000000
 CSEG start        00000010
 CSEG forever      0000001b
