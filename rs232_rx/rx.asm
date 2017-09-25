@@ -68,8 +68,8 @@ start:
 	
 	ldi temp, 0x00  		;Portc pin7 will be used as an input, we really don't care the other pins for this example
 	out DDRC, temp       ;DDRC set to 0x00 (0 for input, 1 for output).
-	ldi temp, 0x00
-	out PORTC, temp
+	ldi temp, 0x00	     ;Disable the internal pullup resistors.
+	out PORTC, temp      ;This is done by writing 0 (1 for enable) to portc when its an input.
 
 ;------------------
 ;forever:

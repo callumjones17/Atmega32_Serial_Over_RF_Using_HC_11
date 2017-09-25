@@ -1,0 +1,858 @@
+
+AVRASM ver. 1.74  rx.asm Mon Sep 25 10:16:06 2017
+
+
+         ;**********************************************************************
+         ;***	RS232 Reciver Code with Attached Parallax Serial LCD Screen  ****
+         ;**********************************************************************
+         ;This program is intened for use with the ATMEGA32,
+         ;where PORTC pin 7 is the RX pin, and PORTB pin 7 will be used as a TX
+         ;pin, to serial out to the parallax LCD screen. This particular screen
+         ;uses ascii characters to both display and control it.
+         
+         ;RS232 Settings RX and TX:
+         ;Baud - 9600
+         ;Stop Bit - 1 or 2 (Won't affect the program)
+         ;Data Bits - 8
+         ;No Parity Bits.
+         
+         ;2256 - Introduction into Embedded Systems - 2017
+         ;Callum Jones
+         ;RMIT
+         
+          .include "C:\2256\VMLAB\include\m32def.inc"
+         ;***************************************************************************
+         ;* A P P L I C A T I O N   N O T E   F O R   T H E   A V R   F A M I L Y
+         ;* 
+         ;* Number		        :AVR000
+         ;* File Name		    :"m32def.inc"
+         ;* Title		        :Register/Bit Definitions for the ATmega32
+         ;* Date                 :99.08.25
+         ;* Version              :1.00
+         ;* Support telephone	:+47 72 88 43 88 (ATMEL Norway)
+         ;* Support fax		    :+47 72 88 43 99 (ATMEL Norway)
+         ;* Support E-mail	    :avr@atmel.no
+         ;* Target MCU		    :ATmega32
+         ;*
+         ;* DESCRIPTION
+         ;* When including this file in the assembly program file, all I/O register	
+         ;* names and I/O register bit names appearing in the data book can be used.
+         ;* In addition, the six registers forming the three data pointers X, Y and
+         ;* Z have been assigned names XL - ZH. Highest RAM address for Internal 
+         ;* SRAM is also defined 
+         ;*
+         ;* The Register names are represented by their hexadecimal address.
+         ;* 
+         ;* The Register Bit names are represented by their bit number (0-7).
+         ;* 
+         ;* Please observe the difference in using the bit names with instructions
+         ;* such as "sbr"/"cbr" (set/clear bit in register) and "sbrs"/"sbrc" 
+         ;* (skip if bit in register set/cleared). The following example illustrates
+         ;* this:
+         ;* 
+         ;* in	r16,PORTB		;read PORTB latch
+         ;* sbr	r16,(1<<PB6)+(1<<PB5)	;set PB6 and PB5 (use masks, not bit#)
+         ;* out  PORTB,r16		;output to PORTB
+         ;*
+         ;* in	r16,TIFR		;read the Timer Interrupt Flag Register
+         ;* sbrc	r16,TOV0		;test the overflow flag (use bit#)
+         ;* rjmp	TOV0_is_set		;jump if set
+         ;* ...				;otherwise do something else
+         ;***************************************************************************
+         
+         ;***** Specify Device
+          .device ATmega32
+         
+         ;***** I/O Register Definitions
+          .equ	SREG	=$3f
+          .equ	SPH	    =$3e
+          .equ	SPL	    =$3d
+          .equ	OCR0	=$3c
+          .equ	GIMSK	=$3b		; For compatibility, keep both names until further
+          .equ	GICR	=$3b		; new name for GIMSK
+          .equ	GIFR	=$3a
+          .equ	TIMSK	=$39
+          .equ	TIFR	=$38
+          .equ	SPMCR	=$37
+          .equ    TWCR    =$36
+          .equ    MCUCR   =$35
+          .equ    MCUSR   =$34		; For compatibility, 
+          .equ    MCUCSR  =$34		; keep both names until further
+          .equ	TCCR0	=$33
+          .equ	TCNT0	=$32
+          .equ    OSCCAL  =$31
+          .equ    SFIOR   =$30
+          .equ	TCCR1A	=$2f
+          .equ	TCCR1B	=$2e
+          .equ	TCNT1H	=$2d
+          .equ	TCNT1L	=$2c
+          .equ	OCR1AH	=$2b
+          .equ	OCR1AL	=$2a
+          .equ	OCR1BH	=$29
+          .equ	OCR1BL	=$28
+          .equ	ICR1H	=$27
+          .equ	ICR1L	=$26
+          .equ	TCCR2	=$25
+          .equ	TCNT2	=$24
+          .equ	OCR2	=$23
+          .equ	ASSR	=$22
+          .equ	WDTCR	=$21
+          .equ    UBRRH   =$20		;  Note! UCSRC equals UBRRH
+          .equ	EEARH	=$1f
+          .equ	EEARL	=$1e
+          .equ	EEDR	=$1d
+          .equ	EECR	=$1c
+          .equ	PORTA	=$1b
+          .equ	DDRA	=$1a
+          .equ	PINA	=$19
+          .equ	PORTB	=$18
+          .equ	DDRB	=$17
+          .equ	PINB	=$16
+          .equ	PORTC	=$15
+          .equ	DDRC	=$14
+          .equ	PINC	=$13
+          .equ	PORTD	=$12
+          .equ	DDRD	=$11
+          .equ	PIND	=$10
+          .equ	SPDR	=$0f
+          .equ	SPSR	=$0e
+          .equ	SPCR	=$0d
+          .equ	UDR	    =$0c
+          .equ	UCSRA	=$0b
+          .equ	UCSRB	=$0a
+          .equ	UCSRC	=$20		;  Note! UCSRC equals UBRRH
+          .equ	UBRRL	=$09
+          .equ	ACSR	=$08
+          .equ    ADMUX   =$07
+          .equ    ADCSR   =$06
+          .equ    ADCH    =$05
+          .equ    ADCL    =$04
+          .equ    TWDR    =$03
+          .equ    TWAR    =$02
+          .equ    TWSR    =$01
+          .equ    TWBR    =$00
+         
+         
+         
+         ;***** Bit Definitions
+         ;GIMSK
+          .equ	INT1	=7
+          .equ	INT0	=6
+          .equ	INT2	=5
+          .equ	IVSEL	=1		; interrupt vector select
+          .equ	IVCE	=0		; interrupt vector change enable
+         
+         ;GIFR
+          .equ	INTF1	=7
+          .equ	INTF0	=6
+          .equ	INTF2	=5
+         
+         ;TIMSK
+          .equ    TOIE0   =0
+          .equ    OCIE0   =1
+          .equ    TOIE1   =2
+          .equ    OCIE1B  =3
+          .equ    OCIE1A  =4
+          .equ    TICIE1  =5
+          .equ    TOIE2   =6
+          .equ    OCIE2   =7
+         
+         ;TIFR
+          .equ    TOV0    =0
+          .equ    OCF0    =1
+          .equ    TOV1    =2
+          .equ    OCF1B   =3
+          .equ    OCF1A   =4
+          .equ    ICF1    =5
+          .equ    TOV2    =6
+          .equ    OCF2    =7
+         
+         ;SPMCR
+          .equ	SPMIE	=7
+          .equ	ASB	=6
+          .equ	ASRE	=4
+          .equ	BLBSET	=3
+          .equ	PGWRT	=2
+          .equ	PGERS	=1
+          .equ	SPMEN	=0
+         
+         ;MCUCR
+          .equ    SE      =7
+          .equ    SM2     =6
+          .equ    SM1     =5
+          .equ    SM0     =4
+          .equ    ISC11   =3
+          .equ    ISC10   =2
+          .equ    ISC01   =1
+          .equ    ISC00   =0
+         
+         ;MCUCSR
+          .equ	JTD     =7	
+          .equ    ISC2    =6
+          .equ    EIH     =5
+          .equ    JTRF    =4	
+          .equ    WDRF    =3
+          .equ    BORF    =2
+          .equ    EXTRF   =1
+          .equ    PORF    =0
+         
+         ;TCCR0
+          .equ    FOC0    =7
+          .equ    PWM0    =6
+          .equ	COM01	=5
+          .equ	COM00	=4
+          .equ	CTC0	=3
+          .equ	CS02	=2
+          .equ	CS01	=1
+          .equ	CS00	=0
+         
+         ;TCCR1A
+          .equ	COM1A1	=7
+          .equ	COM1A0	=6
+          .equ	COM1B1	=5
+          .equ	COM1B0	=4
+          .equ	FOC1A	=3
+          .equ	FOC1B	=2
+          .equ	PWM11	=1
+          .equ	PWM10	=0
+         
+         ;TCCR1B
+          .equ	ICNC1	=7
+          .equ	ICES1	=6
+          .equ	CTC11	=4
+          .equ	CTC10	=3
+          .equ	CTC1	=3		; Obsolete - Included for backward compatibility
+          .equ	CS12	=2
+          .equ	CS11	=1
+          .equ	CS10	=0
+         
+         ;TCCR2
+          .equ	FOC2	=7
+          .equ    PWM2    =6
+          .equ    COM21   =5
+          .equ    COM20   =4
+          .equ    CTC2    =3
+          .equ    CS22    =2
+          .equ    CS21    =1
+          .equ    CS20    =0
+         
+         ;SFIOR
+          .equ    RPDD    =7
+          .equ    RPDC    =6
+          .equ    RPDB    =5
+          .equ    RPDA    =4
+          .equ    ACME    =3
+          .equ    PUD     =2
+          .equ	PSR2	=1
+          .equ	PSR10	=0
+         
+         ;WDTCR
+          .equ	WDTOE	=4
+          .equ	WDE	=3
+          .equ	WDP2	=2
+          .equ	WDP1	=1
+          .equ	WDP0	=0
+         
+         ;EECR
+          .equ    EERIE   =3
+          .equ	EEMWE	=2
+          .equ	EEWE	=1
+          .equ	EERE	=0
+         
+         ;PORTA
+          .equ	PA7	=7
+          .equ	PA6	=6
+          .equ	PA5	=5
+          .equ	PA4	=4
+          .equ	PA3	=3
+          .equ	PA2	=2
+          .equ	PA1	=1
+          .equ	PA0	=0
+         
+         ;DDRA
+          .equ	DDA7	=7
+          .equ	DDA6	=6
+          .equ	DDA5	=5
+          .equ	DDA4	=4
+          .equ	DDA3	=3
+          .equ	DDA2	=2
+          .equ	DDA1	=1
+          .equ	DDA0	=0
+         
+         ;PINA
+          .equ	PINA7	=7
+          .equ	PINA6	=6
+          .equ	PINA5	=5
+          .equ	PINA4	=4
+          .equ	PINA3	=3
+          .equ	PINA2	=2
+          .equ	PINA1	=1
+          .equ	PINA0	=0
+         
+         ;PORTB
+          .equ	PB7	=7
+          .equ	PB6	=6
+          .equ	PB5	=5
+          .equ	PB4	=4
+          .equ	PB3	=3
+          .equ	PB2	=2
+          .equ	PB1	=1
+          .equ	PB0	=0
+         
+         ;DDRB
+          .equ	DDB7	=7
+          .equ	DDB6	=6
+          .equ	DDB5	=5
+          .equ	DDB4	=4
+          .equ	DDB3	=3
+          .equ	DDB2	=2
+          .equ	DDB1	=1
+          .equ	DDB0	=0
+         
+         ;PINB
+          .equ	PINB7	=7
+          .equ	PINB6	=6
+          .equ	PINB5	=5
+          .equ	PINB4	=4
+          .equ	PINB3	=3
+          .equ	PINB2	=2
+          .equ	PINB1	=1
+          .equ	PINB0	=0
+         
+         ;PORTC
+          .equ	PC7	=7
+          .equ	PC6	=6
+          .equ	PC5	=5
+          .equ	PC4	=4
+          .equ	PC3	=3
+          .equ	PC2	=2
+          .equ	PC1	=1
+          .equ	PC0	=0
+         
+         ;DDRC
+          .equ	DDC7	=7
+          .equ	DDC6	=6
+          .equ	DDC5	=5
+          .equ	DDC4	=4
+          .equ	DDC3	=3
+          .equ	DDC2	=2
+          .equ	DDC1	=1
+          .equ	DDC0	=0
+         
+         ;PINC
+          .equ	PINC7	=7
+          .equ	PINC6	=6
+          .equ	PINC5	=5
+          .equ	PINC4	=4
+          .equ	PINC3	=3
+          .equ	PINC2	=2
+          .equ	PINC1	=1
+          .equ	PINC0	=0
+         
+         ;PORTD
+          .equ	PD7	=7
+          .equ	PD6	=6
+          .equ	PD5	=5
+          .equ	PD4	=4
+          .equ	PD3	=3
+          .equ	PD2	=2
+          .equ	PD1	=1
+          .equ	PD0	=0
+         
+         ;DDRD
+          .equ	DDD7	=7
+          .equ	DDD6	=6
+          .equ	DDD5	=5
+          .equ	DDD4	=4
+          .equ	DDD3	=3
+          .equ	DDD2	=2
+          .equ	DDD1	=1
+          .equ	DDD0	=0
+         
+         ;PIND
+          .equ	PIND7	=7
+          .equ	PIND6	=6
+          .equ	PIND5	=5
+          .equ	PIND4	=4
+          .equ	PIND3	=3
+          .equ	PIND2	=2
+          .equ	PIND1	=1
+          .equ	PIND0	=0
+         
+         ;UCSRA
+          .equ	RXC	=7
+          .equ	TXC	=6
+          .equ	UDRE	=5
+          .equ	FE	=4
+          .equ	OR	=3		; old name kept for compatibilty
+          .equ	DOR	=3
+          .equ	PE	=2
+          .equ	U2X	=1
+          .equ	MPCM	=0
+         
+         ;UCSRB
+          .equ	RXCIE	=7
+          .equ	TXCIE	=6
+          .equ	UDRIE	=5
+          .equ	RXEN	=4
+          .equ	TXEN	=3
+          .equ	CHR9	=2		; old name kept for compatibilty
+          .equ	UCSZ2	=2
+          .equ	RXB8	=1
+          .equ	TXB8	=0
+         
+         ;UCSRC
+          .equ	URSEL	=7
+          .equ	UMSEL	=6
+          .equ	UPM1	=5
+          .equ	UPM0	=4
+          .equ	USBS	=3
+          .equ	UCSZ1	=2
+          .equ	UCSZ0	=1
+          .equ	UCPOL	=0
+         		
+         ;SPCR
+          .equ	SPIE	=7
+          .equ	SPE	=6
+          .equ	DORD	=5
+          .equ	MSTR	=4
+          .equ	CPOL	=3
+          .equ	CPHA	=2
+          .equ	SPR1	=1
+          .equ	SPR0	=0
+         
+         ;SPSR
+          .equ	SPIF	=7
+          .equ	WCOL	=6
+          .equ	SPI2X	=0
+         
+         ;ACSR
+          .equ	ACD	=7
+          .equ    ACBG    =6
+          .equ	ACO	=5
+          .equ	ACI	=4
+          .equ	ACIE	=3
+          .equ	ACIC	=2
+          .equ	ACIS1	=1
+          .equ	ACIS0	=0
+         
+         ;ADMUX
+          .equ    REFS1   =7
+          .equ    REFS0   =6
+          .equ    ADLAR   =5
+          .equ    MUX4    =4
+          .equ    MUX3    =3
+          .equ    MUX2    =2
+          .equ    MUX1    =1
+          .equ    MUX0    =0
+         
+         ;ADCSR
+          .equ    ADEN    =7
+          .equ    ADSC    =6
+          .equ    ADFR    =5
+          .equ    ADIF    =4
+          .equ    ADIE    =3
+          .equ    ADPS2   =2
+          .equ    ADPS1   =1
+          .equ    ADPS0   =0
+         
+         ; TWCR
+          .equ    TWINT   =7
+          .equ    TWEA    =6
+          .equ    TWSTA   =5
+          .equ    TWSTO   =4
+          .equ    TWWC    =3
+          .equ    TWEN    =2
+          .equ    TWI_TST =1  ;Present in core test mode only. Write Only.
+          .equ    TWIE    =0
+         
+         ; TWAR
+          .equ    TWGCE   =0
+         
+         ;ASSR
+          .equ    AS2     =3
+          .equ    TCN2UB  =2
+          .equ    OCR2UB  =1
+          .equ    TCR2UB  =0
+         
+          .def	XL	=r26
+          .def	XH	=r27
+          .def	YL	=r28
+          .def	YH	=r29
+          .def	ZL	=r30
+          .def	ZH	=r31
+         
+          .equ 	FLASHEND	=$3FFF
+          .equ 	E2END	    =$3FF
+          .equ	RAMEND	    =$85F
+         
+         			;  byte groups
+         			;  /\/--\/--\/--\ 
+          .equ 	SMALLBOOTSTART	=0b11111100000000  ;($3F00) smallest boot block is 256W
+          .equ 	SECONDBOOTSTART	=0b11111000000000  ;($3E00) 2'nd boot block size is 512W
+          .equ 	THIRDBOOTSTART	=0b11110000000000  ;($3C00) third boot block size is 1KW
+          .equ 	LARGEBOOTSTART	=0b11100000000000  ;($3800) largest boot block is 2KW
+          .equ 	BOOTSTART	=THIRDBOOTSTART  ;OBSOLETE!!! kept for compatibility
+          .equ	PAGESIZE	=64     ;number of WORDS in a page
+         
+         
+          .equ	INT0addr=$002	; External Interrupt0 Vector Address
+          .equ	INT1addr=$004	; External Interrupt1 Vector Address
+          .equ	INT2addr=$006	; External Interrupt2 Vector Address
+          .equ	OC2addr =$008	; Output Compare2 Interrupt Vector Address
+          .equ	OVF2addr=$00a	; Overflow2 Interrupt Vector Address
+          .equ	ICP1addr=$00c	; Input Capture1 Interrupt Vector Address
+          .equ	OC1Aaddr=$00e	; Output Compare1A Interrupt Vector Address
+          .equ	OC1Baddr=$010	; Output Compare1B Interrupt Vector Address
+          .equ	OVF1addr=$012	; Overflow1 Interrupt Vector Address
+          .equ	OC0addr =$014	; Output Compare0 Interrupt Vector Address
+          .equ	OVF0addr=$016	; Overflow0 Interrupt Vector Address
+          .equ	SPIaddr =$018	; SPI Interrupt Vector Address
+          .equ	URXCaddr=$01a	; USART Receive Complete Interrupt Vector Address
+          .equ	UDREaddr=$01c	; USART Data Register Empty Interrupt Vector Address
+          .equ	UTXCaddr=$01e	; USART Transmit Complete Interrupt Vector Address
+          .equ	ADCCaddr=$020	; ADC Interrupt Vector Address
+          .equ	ERDYaddr=$022	; EEPROM Interrupt Vector Address
+          .equ	ACIaddr =$024	; Analog Comparator Interrupt Vector Address
+          .equ    TWSIaddr=$026   ; Irq. vector address for Two-Wire Interface
+          .equ	SPMRaddr=$028	; Store Program Memory Ready Interrupt Vector Address
+         
+         
+         
+         
+          .def  temp  =r16         ;Define registers 19-21 for use as varibles
+          .def result =r17
+          .def delay_reg =r18
+          .def temp2 =r19
+          .def ser_out = r20
+          .def ser_out_temp = r21
+          .def debug = r22    		;For slow debugging only.
+         
+          .equ DelayBaud = 205			;Define delay counter values.
+          .equ DelayBaudHalf = 10
+         
+          reset:
+000000 c010         rjmp start
+000001 9518         reti      ; Addr $01
+000002 9518         reti      ; Addr $02
+000003 9518         reti      ; Addr $03
+000004 9518         reti      ; Addr $04
+000005 9518         reti      ; Addr $05
+000006 9518         reti      ; Addr $06        Use 'rjmp myVector'
+000007 9518         reti      ; Addr $07        to define a interrupt vector
+000008 9518         reti      ; Addr $08
+000009 9518         reti      ; Addr $09
+00000a 9518         reti      ; Addr $0A
+00000b 9518         reti      ; Addr $0B        This is just an example
+00000c 9518         reti      ; Addr $0C        Not all MCUs have the same
+00000d 9518         reti      ; Addr $0D        number of interrupt vectors
+00000e 9518         reti      ; Addr $0E
+00000f 9518         reti      ; Addr $0F
+000010 9518         reti      ; Addr $10
+         
+          start:
+000011 0000         nop
+000012 0000         nop
+         
+000013 2700      	clr temp 			;Clear the registers with a 0 so they can be safely used.
+000014 2733      	clr temp2
+000015 2711      	clr result
+000016 2722      	clr delay_reg
+000017 2766      	clr debug
+         
+000018 e50f      	ldi temp, low(RAMEND);Setup the stack point to the very bottom of RAM.
+000019 bf0d      	out SPL, temp          ;When an item is pushed on the stack, it moves up the RAM (ie the address is decremented),
+00001a e008      	ldi temp, high(RAMEND) ;so RAMEND is the perfect spot - completely out of the way of our code.
+00001b bf0e      	out SPH, temp
+         	
+00001c e800      	ldi temp, 0x80 		;Set up portb pin 7 as an output (TX pin to LCD).
+00001d bb07      	out DDRB, temp       ;The Data dirction pin needs to be set to 1 (0 for input).
+00001e e800      	ldi temp, 0x80       ;For transmitting serial, during the unused state, the link needs to be high.
+00001f bb08      	out PORTB, temp      ;Set it high.
+         	
+000020 e000      	ldi temp, 0x00       ;Set up portc as inputs.
+000021 bb04      	out DDRC, temp       ;Send 0's to DDRC, 0 for input, 1 for output.
+000022 e000      	ldi temp, 0x00       ;Disable the internal pullup resistors.
+000023 bb05      	out PORTC, temp      ;This is done by writing 0 (1 for enable) to portc when its an input.
+         	
+000024 940e 0061 	call Delay           ;Use a delay, give the LCD some setup time.
+         	
+000026 e141      	ldi ser_out, 0x11 	 ; Turn back light on. According the data sheet 0x11 turns on the backlight.
+000027 940e 0113 	call transmit_serial  ;Use serial to send 0x11 to the LCD.
+000029 940e 0053 	call delay_baud       ;Wait for a bit, give the LCD some time to write.
+         
+         
+         
+         ;------------------
+         ;forever:
+         ;	This is the main loop. All it does is call the RX subroutine.
+         ;	There are no delays in this loop, because the RX pin (pin 7 of portc)
+         ;	needs to be sampled as much quicker than the baud rate for 9600. This
+         ; 	is so the start bit is detected instead of a 0 in the data. Start bit is
+         ;	represented by a change from high to low.
+         ;------------------
+          forever:
+00002b 0000         nop
+00002c 0000         nop
+00002d 0000         nop
+00002e 0000         nop
+00002f 940e 0032 	call rx						;This sub routine checks for a low start bit and returns value if true, 0 otherwise
+000031 cff9      rjmp forever
+         
+         ;------------------
+         ;rx:
+         ;	This subroutine checks for the start bit (high to low change on the RX pin).
+         ;	When no data is passing, the RX pin will be high. If the change is detected,
+         ;	go to read_serial routine, otherwise go back to the main loop.
+         ;------------------
+          rx:
+000032 b303       	in temp, PINC         ;Start bit?
+000033 7800       	andi temp, 0x80
+000034 e830       	ldi temp2, 0x80
+000035 1703       	cp temp, temp2
+000036 f411       	brne read_serial
+000037 e000       	ldi temp, 0x00
+000038 9508      	ret
+         
+         	
+         ;------------------
+         ;read_serial:
+         ;	Start bit has already been detected, now the next 8 baud rates must be read.
+         ;	The baud rate for this example is 9600, so the period between the bits sent
+         ;	is 1/9600 = 104.2uS. So after the start bit, after 104uS the first data bit
+         ;	will be sent, and after another 104uS, the 2nd data and so on. Please see
+         ;	github for an image called serial.png for a better view. To read this serial,
+         ;	the processor needs to sample every baud period, however the processor should
+         ;	also delay for half a period, so that it's not sampling on the transition,
+         ;	between data bits.
+         ;------------------	
+          read_serial:
+000039 940e 005a 	call delay_baud_half 	;Shifts our sampler, so the sampler is clear of transitions.
+         		
+00003b e038      	ldi temp2, 0x08			;Number of data bits to detect.		
+          read_bit:			
+00003c 940e 0053 	call delay_baud         ;Delay by baud_period
+00003e b303      	in temp, PINC           ;Read from portc, into temp
+00003f 7800      	andi temp, 0x80         ;AND result with 10000000, so only pin 7 remains.
+000040 1f00      	rol temp                ;Rotate bit 7 from temp into  carry.   (ie -> 1000 0000 -> C = 1, temp = 0000 00000)  Rotating will move all bits to the left
+000041 9517      	ror result              ;Rotate bit from carry into bit 7 of result (ie -> 0000 0000 C = 1 -> result = 1000 0000) Rotating will move all bits to the right
+000042 953a      	dec temp2               ;Decrement our data bit counter
+000043 f7c1      	brne read_bit           ;If no more bits, then continue on, otherwise go back and read the next bit.
+         	
+000044 940e 0053 	call delay_baud         ;Delay by baud period. After the data bits, we should expect a stop bit (HIGH).
+000046 b303      	in temp, PINC           ;Read portc into temp
+000047 7800       	andi temp, 0x80         ;Only interested in pin7, so and with 1000 0000
+000048 e830       	ldi temp2, 0x80         ;Load temp2 with comparison
+000049 1703       	cp temp, temp2          ;Compare temp2 with temp, if they are equal, then RX is high and stop bit has been recived.
+00004a f431       	brne error_code         ;Otherwise there is an error, better handle that.
+          	
+00004b 2f41       	mov ser_out, result		;Move the Resulting ASCII character into ser_out register
+00004c 940e 0113 	call transmit_serial    ;Transmit contents of ser_out to LCD
+00004e 940e 0053  	call Delay_baud    ;Delay, give the LCD some time to write.
+000050 9508      	ret
+          error_code:     				
+000051 e515      	ldi result, 0x55        ;I have decided to use 0x55 as the error. On the OUSB board, this turns on all the RED LED's
+000052 9508      	ret
+         		
+         	
+         	
+         ;----------------------
+         ;delay_baud:
+         ;	Delays the sampler by the baud period, 104uS.
+         ;  Using the instruction set manual for avr, the following was determined:
+         ;	103uS = (205 * 6) + 5 * 83.33nS, baud rate is about 104uS
+         ;  Where 205 is the number stored in DelayBaud and 6 (2 for brne) is the number of cycles in the loop.
+         ;  The extra 5 are for the return and ldi at the start.
+         ;----------------------	
+          delay_baud: 							
+000053 ec2d      	ldi delay_reg, DelayBaud      ;Load the counter value from program memory into delay_reg, 1 cycle
+          db_l:
+000054 952a      	dec delay_reg                 ;decrement the counter delay reg - 1 cycle
+000055 0000      	nop                           ;nop - 1 cycle
+000056 0000      	nop
+000057 0000      	nop
+000058 f7d9      	brne db_l                     ; if not equal to zero, redo the loop again, otherwise return (2 cycles).
+000059 9508      	ret
+         
+         ;----------------------
+         ;delay_baud half:
+         ;	Delays the sampler by the baud period, 104uS.
+         ;  Using the instruction set manual for avr, the following was determined:
+         ;	5.4uS = (10 * 6) + 5 * 83.33nS, baud rate is about 104uS
+         ;  Where 10 is the number stored in DelayBaudHalf and 6 (2 for brne) is the number of cycles in the loop.
+         ;  The extra 5 are for the return and ldi at the start.
+         ;	It was mentioned earlier this value should be about half the baud_rate, but testing and experimentation,
+         ;	resulted in the highest accuracy at 5.4uS. This is probably due to operations between reading the start bit,
+         ;  and first data bit.
+         ;----------------------		
+          delay_baud_half: 							
+00005a e02a      	ldi delay_reg, DelayBaudHalf      ;Load the counter value from program memory into delay_reg, 1 cycle
+          db_h_l:
+00005b 952a      	dec delay_reg                 ;decrement the counter delay reg - 1 cycle
+00005c 0000      	nop                           ;nop - 1 cycle
+00005d 0000      	nop
+00005e 0000      	nop
+00005f f7a1      	brne db_l                     ; if not equal to zero, redo the loop again, otherwise return (2 cycles).
+000060 9508      	ret
+         
+         
+         ;--------------------
+         ;Delay:
+         ;	Calls a lot of 21mS delay routines
+         ;	80 Delay_more's = 80*21mS = 1.68s
+         ;--------------------
+          Delay:
+000061 940e 0102 	call Delay_more
+000063 940e 0102 	call Delay_more
+000065 940e 0102 	call Delay_more
+000067 940e 0102 	call Delay_more
+000069 940e 0102 	call Delay_more
+00006b 940e 0102 	call Delay_more
+00006d 940e 0102 	call Delay_more
+00006f 940e 0102 	call Delay_more
+000071 940e 0102 	call Delay_more
+000073 940e 0102 	call Delay_more
+000075 940e 0102 	call Delay_more
+000077 940e 0102 	call Delay_more
+000079 940e 0102 	call Delay_more
+00007b 940e 0102 	call Delay_more
+00007d 940e 0102 	call Delay_more
+00007f 940e 0102 	call Delay_more
+000081 940e 0102 	call Delay_more
+000083 940e 0102 	call Delay_more
+000085 940e 0102 	call Delay_more
+000087 940e 0102 	call Delay_more
+000089 940e 0102 	call Delay_more
+00008b 940e 0102 	call Delay_more
+00008d 940e 0102 	call Delay_more
+00008f 940e 0102 	call Delay_more
+000091 940e 0102 	call Delay_more
+000093 940e 0102 	call Delay_more
+000095 940e 0102 	call Delay_more
+000097 940e 0102 	call Delay_more
+000099 940e 0102 	call Delay_more
+00009b 940e 0102 	call Delay_more
+00009d 940e 0102 	call Delay_more
+00009f 940e 0102 	call Delay_more
+0000a1 940e 0102 	call Delay_more
+0000a3 940e 0102 	call Delay_more
+0000a5 940e 0102 	call Delay_more
+0000a7 940e 0102 	call Delay_more
+0000a9 940e 0102 	call Delay_more
+0000ab 940e 0102 	call Delay_more
+0000ad 940e 0102 	call Delay_more
+0000af 940e 0102 	call Delay_more
+0000b1 940e 0102 	call Delay_more
+0000b3 940e 0102 	call Delay_more
+0000b5 940e 0102 	call Delay_more
+0000b7 940e 0102 	call Delay_more
+0000b9 940e 0102 	call Delay_more
+0000bb 940e 0102 	call Delay_more
+0000bd 940e 0102 	call Delay_more
+0000bf 940e 0102 	call Delay_more
+0000c1 940e 0102 	call Delay_more
+0000c3 940e 0102 	call Delay_more
+0000c5 940e 0102 	call Delay_more
+0000c7 940e 0102 	call Delay_more
+0000c9 940e 0102 	call Delay_more
+0000cb 940e 0102 	call Delay_more
+0000cd 940e 0102 	call Delay_more
+0000cf 940e 0102 	call Delay_more
+0000d1 940e 0102 	call Delay_more
+0000d3 940e 0102 	call Delay_more
+0000d5 940e 0102 	call Delay_more
+0000d7 940e 0102 	call Delay_more
+0000d9 940e 0102 	call Delay_more
+0000db 940e 0102 	call Delay_more
+0000dd 940e 0102 	call Delay_more
+0000df 940e 0102 	call Delay_more
+0000e1 940e 0102 	call Delay_more
+0000e3 940e 0102 	call Delay_more
+0000e5 940e 0102 	call Delay_more
+0000e7 940e 0102 	call Delay_more
+0000e9 940e 0102 	call Delay_more
+0000eb 940e 0102 	call Delay_more
+0000ed 940e 0102 	call Delay_more
+0000ef 940e 0102 	call Delay_more
+0000f1 940e 0102 	call Delay_more
+0000f3 940e 0102 	call Delay_more
+0000f5 940e 0102 	call Delay_more
+0000f7 940e 0102 	call Delay_more
+0000f9 940e 0102 	call Delay_more
+0000fb 940e 0102 	call Delay_more
+0000fd 940e 0102 	call Delay_more
+0000ff 940e 0102 	call Delay_more
+000101 9508      	ret
+         
+         
+         
+         
+         ;--------------------
+         ;delay_more:
+         ;	Uses inner and outer loop to delay
+         ; 	processor by 21mS. Each loop decrements counters,
+         ; 	from 255 down to zero.
+         ; 	Based on this:
+         ;	4 cycles times 256 * 256 * 83.3 *10e-9 = about 21mS
+         ;--------------------
+          Delay_more:
+000102 930f               PUSH R16			; save R16 and 17 as we're going to use them
+000103 931f               PUSH R17       ; as loop counters
+000104 920f               PUSH R0        ; we'll also use R0 as a zero value for compare
+000105 2400               CLR R0
+000106 2700               CLR R16        ; init inner counter
+000107 2711               CLR R17        ; and outer counter
+000108 950a      L1:      DEC R16         ; counts down from 0 to FF to 0
+000109 1100      			CPSE R16, R0    ; equal to zero?
+00010a cffd      			RJMP L1			 ; if not, do it again
+00010b 2700      			CLR R16			 ; reinit inner counter
+00010c 951a      L2:      DEC R17
+00010d 1110               CPSE R17, R0    ; is it zero yet?
+00010e cff9               RJMP L1			 ; back to inner counter
+         ;
+00010f 900f               POP R0          ; done, clean up and return
+000110 911f               POP R17
+000111 910f               POP R16
+000112 9508               RET
+         	
+         	
+          transmit_serial:
+000113 2755         clr ser_out_temp		;Clear a temporary varible for use.
+         
+000114 ef0f      	ldi temp, 0xff			;Make sure serial port is already high.
+000115 bb08      	out portb, temp
+000116 940e 0053 	call delay_baud
+         	
+000118 940e 0053 	call delay_baud 			;Start bit requires a high to low change.
+00011a e000      	ldi temp, 0x00          ;Load 0 into temp.
+00011b bb08      	out portb, temp         ;Will set pin 7 low.
+         	
+00011c 933f      	push temp2          		;just incase its used elsewhere, push the contents onto the stack.
+00011d e038      	ldi temp2, 0x08         ;Load the number of data bits into the register.
+         	
+          write_bit:
+00011e 940e 0053 	call delay_baud 			;Delay by baud period.
+000120 9547         ror ser_out             ;rotate right, so that bit 0 (sent first) is moved into carry register.
+000121 9557         ror ser_out_temp        ;rotate right, so the carry contents, is moved into bit 7 of ser_out temp.
+000122 bb58      	out portb, ser_out_temp ;output to portb.
+000123 953a      	dec temp2               ;decrement the data bit counter
+000124 f7c9      	brne write_bit          ;If data bit counter is zero, then continue, otherwise go back and write another bit.
+         	
+000125 913f      	pop temp2               ;Pull the value of temp2 from the stack and back into temp2.
+         	
+000126 940e 0053 	call delay_baud			;Delay baud before send stop bit.
+000128 ef0f      	ldi temp, 0xff          ;Stop bit requires a high
+000129 bb08      	out portb, temp         ;Output high on pin 7.
+00012a 940e 0053 	call delay_baud
+00012c 940e 0053 	call delay_baud			;Technically, this is an extra stop bit. But a single stop bit reciever will also work.
+00012e 9508      	ret
+         
+         
+         
+         
+         
+         
+         
+         
+
+Assembly complete with no errors.

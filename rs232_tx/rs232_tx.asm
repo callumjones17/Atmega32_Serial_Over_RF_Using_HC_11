@@ -63,7 +63,11 @@ start:
 	
 
 
-
+;-------------------------
+;forever:
+;	This routine just loops around continuously delaying, then transmiting
+;	the ascii character 'C' (0x43).
+;-------------------------
 forever:
    nop
    nop
@@ -80,7 +84,17 @@ forever:
 rjmp forever
 
 
-
+;--------------------
+;transmit serial:
+;	Assumes a value for sending has been placed into ser_reg.
+;	This functions transmits a serial over portb pin 7 use rotation functions.
+;	The order of sending is LSB (least significant bit) first, so ser_reg is
+;  rotated right, and the bit to send is moved into carry. rotating ser reg temp
+;	right as well, will move the contents of carry into bit 7 of the 2nd register.
+;	this bit is then written to portb. This happens every baud period 104uS after the start bit.
+;	The start bit needs to be a high changing to a low, and then a stop bit is just set high.
+;	See serial.png on github.
+;-------------------	
 transmit_serial:
    clr ser_out_temp		;Clear a temporary varible for use.
 
