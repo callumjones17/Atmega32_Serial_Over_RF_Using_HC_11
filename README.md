@@ -1,2 +1,2 @@
-# Atmega32_Serial_Over_RF_Using_HC_11
-Using the HC_11 module to communicate between 2 OUSB boards (atmega32). Written in Assembler.
+# Atmega32 Serial over RF using HC 11
+Using the HC 11 module to communicate between 2 OUSB boards (atmega32). Written in Assembler.
