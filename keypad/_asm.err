@@ -1,0 +1,17 @@
+Creating   'keypad.eep'
+Creating   'keypad.hex'
+Creating   'keypad.obj'
+Creating   'keypad.lis'
+Creating   'keypad.map'
+
+Assembling 'keypad.asm'
+Including  'C:\2256\VMLAB\include\m32def.inc'
+
+Program memory usage:
+Code             :  103 words
+Constants (dw/db):    6 words
+Unused           :    0 words
+Total            :  109 words
+
+Assembly complete with no errors.
+Deleting   'keypad.eep'
