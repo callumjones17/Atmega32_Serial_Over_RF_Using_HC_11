@@ -1,5 +1,5 @@
 
-AVRASM ver. 1.74  keypad.asm Tue Sep 26 20:58:14 2017
+AVRASM ver. 1.74  tx_kepd.asm Tue Sep 26 21:13:23 2017
 
 
 EQU  sreg         0000003f
@@ -370,20 +370,31 @@ EQU  erdyaddr     00000022
 EQU  aciaddr      00000024
 EQU  twsiaddr     00000026
 EQU  spmraddr     00000028
-DEF  temp         r16
-DEF  temp2        r19
-DEF  delay_reg    r18
-DEF  array_count  r22
 CSEG reset        00000000
 CSEG start        00000011
-CSEG forever      00000022
-CSEG wait_for_key 0000002b
-CSEG key_pressed  00000044
-CSEG convert      00000045
-CSEG convert_loop 00000048
-CSEG continue_loop 0000004f
-CSEG display      00000054
-CSEG delay        00000056
-CSEG inner_loop   0000005c
-CSEG outer_loop   0000005f
-CSEG tble         00000067
+CSEG forever      00000020
+CSEG check_2      00000030
+CSEG is_number    00000037
+CSEG continue_main_loop 0000003a
+DEF  temp         r16
+DEF  delay_reg    r18
+DEF  temp2        r19
+DEF  ser_out      r20
+DEF  ser_out_temp r21
+DEF  array_count  r22
+EQU  delaybaud    000000cd
+CSEG transmit_serial 00000041
+CSEG write_bit    0000004c
+CSEG wait_for_key 0000005d
+CSEG key_pressed  00000076
+CSEG convert      00000077
+CSEG convert_loop 0000007a
+CSEG continue_loop 00000081
+CSEG tble         00000086
+CSEG delay_baud   0000008c
+CSEG db_l         0000008d
+CSEG delaybig     00000093
+CSEG delay_more   000000ae
+CSEG l1           000000b4
+CSEG l2           000000b8
+CSEG delay        000000bf

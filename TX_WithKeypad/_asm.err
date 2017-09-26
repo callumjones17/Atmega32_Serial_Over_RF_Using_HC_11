@@ -1,0 +1,21 @@
+Creating   'tx_kepd.eep'
+Creating   'tx_kepd.hex'
+Creating   'tx_kepd.obj'
+Creating   'tx_kepd.lis'
+Creating   'tx_kepd.map'
+
+Assembling 'tx_kepd.asm'
+Including  'C:\2256\VMLAB\include\m32def.inc'
+Including  'defs.asm'
+Including  'TX.asm'
+Including  'keypad.asm'
+Including  'delays.asm'
+
+Program memory usage:
+Code             :  188 words
+Constants (dw/db):    6 words
+Unused           :    0 words
+Total            :  194 words
+
+Assembly complete with no errors.
+Deleting   'tx_kepd.eep'

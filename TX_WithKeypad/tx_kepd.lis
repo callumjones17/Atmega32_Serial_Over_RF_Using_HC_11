@@ -1,39 +1,25 @@
 
-AVRASM ver. 1.74  keypad.asm Tue Sep 26 20:58:14 2017
+AVRASM ver. 1.74  tx_kepd.asm Tue Sep 26 21:13:23 2017
 
 
-         ;******************************
-         ;***	4x3 Keypad Handler   ****
-         ;*****************************
+         ;*********************************
+         ;***	RS232 Transmitter Code  ****
+         ;*********************************
          ;This program is intened for use with the ATMEGA32,
-         ;where PORTC is connected directly to a 4x3 keypad.
-         ;(12 buttons). This program assumes no external pull
-         ;up or pull down resistors have been used. Hence this
-         ;program enables the pull up resistors for PORTC. The
-         ;value of the key pressed will be displated on PORTB via
-         ; LED's.
-         ;The keypad used here is connected as follows:
-         ;
-         ;1 -> 1--2--3
-         ;6 -> 4--5--6
-         ;5 -> 7--8--9
-         ;3 -> *--0--#
-         ;     |--|--|
-         ;     2  0  4
-         ;
-         ;This program will scan each column seperatly. This will be
-         ;done by setting all the rows to be inputs (pulled high), while
-         ;the columns are outputs (normally high). The program will
-         ;continuously scan through the columns (by setting it to 0),
-         ;such that when a key is pressed in that column, the input will
-         ;come back low. Then a key is deteceted. Next the scan code
-         ;has to be converted, for this I simply used a table, and I loop
-         ;through. Where the element is scan code, and the index is the
-         ;converted number. Start is 10 and hash is 11.
+         ;where pin 8 of portb is used for transmitting serial,
+         ;over a wired or wireless link. Portc is used in this
+         ;program for the keypad (4x3 -> 12 key)
+         
+         ;RS232 Settings:
+         ;Baud - 9600
+         ;Stop Bit - 1 or 2 (Won't affect the program, unless your sending serial really quickly, in which case stop bits is 1)
+         ;Data Bits - 8
+         ;No Parity Bits.
          
          ;2256 - Introduction into Embedded Systems - 2017
          ;Callum Jones
          ;RMIT
+         
          
           .include "C:\2256\VMLAB\include\m32def.inc"
          ;***************************************************************************
@@ -535,11 +521,10 @@ AVRASM ver. 1.74  keypad.asm Tue Sep 26 20:58:14 2017
          
          
          
-          .def  temp  =r16   		;Set up some registers
-          .def  temp2 =r19
-          .def delay_reg = r18
-          .def array_count =r22
-         
+         ;The program must start at this file, org 0x00 is used to specify that this code
+         ;will be placed at 0x00 in program memory. Also see bottom of the file for other includes.
+         ;Note, that they are included, after this code is defined.	
+          .org 0x00
          
           reset:
 000000 c010         rjmp start
@@ -560,43 +545,117 @@ AVRASM ver. 1.74  keypad.asm Tue Sep 26 20:58:14 2017
 00000f 9518         reti      ; Addr $0F
 000010 9518         reti      ; Addr $10
          
-         ; Program starts here after Reset
-         ;
           start:
-000011 e008        	ldi temp, high(RAMEND) ;Initialise the stack pointer to end of ram. This is because the stack pointer
-000012 bf0e        	out SPH, temp     	  ;decrements when items are pushed onto it. As we are not concerned about memory
-000013 e50f        	ldi temp, low(RAMEND)  ;at this stage, this is perfectly fine.
-000014 bf0d        	out SPL, temp
-           	
-000015 ef0f        	ldi temp, 0xff  		  ;Portb will be used entirely as an output (8 LED's).
-000016 bb07        	out ddrb, temp         ;Data direction register - 1 -> set pin as output, 0 -> set pin as input.
-000017 bb08        	out portb, temp        ;Turn all LED's on.
-000018 940e 0056   	call delay             ;Delay
-00001a 940e 0056   	call delay
-00001c e000      	ldi temp, 0x00         ;Turn all LED's off.
-00001d bb08      	out portb, temp
+000011 0000         nop       ; Initialize here ports, stack pointer,
+000012 0000         nop       ; cleanup RAM, etc.
+000013 0000         nop       ;
+000014 0000         nop
+         
+000015 e50f      	ldi temp, low(RAMEND)
+000016 bf0d      	out SPL, temp
+000017 e008      	ldi temp, high(RAMEND)
+000018 bf0e      	out SPH, temp
          	
-00001e e105      	ldi temp, 0x15         ;Setting up Portc. Read introcution above.
-00001f bb04      	out ddrc, temp         ;DDRC 1 for output, 0 for input.
-000020 ef0f      	ldi temp, 0xff         ;For every pin that has been set up as an input, this will enable the internal pull
-000021 bb05      	out portc, temp        ;up resistor. Please see the manual.
+000019 e800      	ldi temp, 0x80
+00001a bb07      	out DDRB, temp
+00001b bb08      	out PORTB, temp
+         	
+00001c e105      	ldi	TEMP, $15     ;See the keypad project folder on github for more information
+00001d bb04         out   DDRC, TEMP    ; set up keypad ports
+00001e ef0f         ldi	TEMP, $FF     ; Enable Pullup resistors
+00001f bb05         out	PORTC, temp
          
-         ;*****************
-         ;forever:
-         ;	Essentially this loops through the stages of pressing a key
-         ;	Read the key (doesn't return until one is pressed), then
-         ;	convert the scan code into an understandable number,
-         ;	(binary/hex). The program then displays it to portb,
-         ;	before delaying and restarting.
-         ;*****************
+         
           forever:
-000022 940e 002b    call wait_for_key		;Does what it says. Returns a key into temp
-000024 940e 0045    call convert         ;Converts the scan code into a number from the keypad
-000026 940e 0054    call display         ;Displays number onto portb
-000028 940e 0056    call delay           ;Delays
-00002a cff7      rjmp forever
+000020 0000         nop
+000021 0000         nop
+000022 940e 00bf    call Delay 				;Give everything some time to recover
+000024 940e 005d    call wait_for_key    ;Wait for a key, stored in temp
+000026 940e 0077    call Convert         ;Convert scan code in temp, to a binary equivalent of the key pressed.
+         
+000028 933f         push temp2 				;Push onto stack, not really necessary, oh well.
+000029 e03a      	ldi temp2, 0x0A      ;Ok so I will be using the ascii character set to send serial, therefore the converted number must be converted to ascii before sending.
+00002a 1703      	cp temp, temp2       ;Check to see if 10 was pressed ('*').
+00002b f421      	brne check_2         ;If not check if has was pressed.
+00002c e20a      	ldi temp, 0x2A       ;If so, move the ascii code for '*' (0x2A) into temp.
+00002d 2f40      	mov ser_out, temp    ;Move temp into the serial out register, so it can be sent over a serial link
+00002e 940c 003a 	jmp continue_main_loop
+          check_2:
+000030 e03b         ldi temp2, 0x0B
+000031 1703         cp temp, temp2        ;Was '#' pressed (11 (0x0B))?
+000032 f421         brne is_number        ;If not, it must be a number.
+000033 e203         ldi temp, 0x23        ;If so, this is the ascii for '#'.
+000034 2f40         mov ser_out, temp     ;Move ascii code into serial out register and continue main loop.
+000035 940c 003a    jmp continue_main_loop
+          is_number:
+000037 e330      	ldi temp2, 0x30        ;Ok if the key pressed is a number, then simply just add 0x30 to the number, which gives the ascii code.
+000038 0f03      	add temp, temp2        ;This is because in ascii the numbers 0-9 map to 0x30 -0x39
+000039 2f40      	mov ser_out, temp      ;Move it into serial out, so it can be sent over serial link.
+          continue_main_loop:
+00003a 913f      	pop temp2              ;Pop off the stack.
+00003b 940e 0041    call transmit_serial   ;Transmit contents of ser out register over the link.
+00003d 940e 0093    call DelayBig          ;Delay for quite some time, so that Reciver has time to write to the LCD.
+00003f 0000         nop       ; behaviour here
+000040 cfdf      rjmp forever
+         
+         ;These are the other files, which contain key sub routines, just helps clean up the code.
+          .include "defs.asm"
+          .def  temp  = r16
+          .def delay_reg = r18
+          .DEF temp2 = r19
+          .def SER_OUT = r20
+          .def SER_OUT_TEMP = r21
+          .DEF array_count = R22
+         
+          .equ delayBaud = 205
          
          
+         
+         
+         
+          .include "TX.asm"
+         ;--------------------
+         ;transmit serial:
+         ;	Assumes a value for sending has been placed into ser_reg.
+         ;	This functions transmits a serial over portb pin 7 use rotation functions.
+         ;	The order of sending is LSB (least significant bit) first, so ser_reg is
+         ;  rotated right, and the bit to send is moved into carry. rotating ser reg temp
+         ;	right as well, will move the contents of carry into bit 7 of the 2nd register.
+         ;	this bit is then written to portb. This happens every baud period 104uS after the start bit.
+         ;	The start bit needs to be a high changing to a low, and then a stop bit is just set high.
+         ;	See serial.png on github.
+         ;-------------------	
+          transmit_serial:
+000041 2755         clr ser_out_temp		;Clear a temporary varible for use.
+         
+000042 ef0f      	ldi temp, 0xff			;Make sure serial port is already high.
+000043 bb08      	out portb, temp
+000044 940e 008c 	call delay_baud
+         	
+000046 940e 008c 	call delay_baud 			;Start bit requires a high to low change.
+000048 e000      	ldi temp, 0x00          ;Load 0 into temp.
+000049 bb08      	out portb, temp         ;Will set pin 7 low.
+         	
+00004a 933f      	push temp2          		;just incase its used elsewhere, push the contents onto the stack.
+00004b e038      	ldi temp2, 0x08         ;Load the number of data bits into the register.
+         	
+          write_bit:
+00004c 940e 008c 	call delay_baud 			;Delay by baud period.
+00004e 9547         ror ser_out             ;rotate right, so that bit 0 (sent first) is moved into carry register.
+00004f 9557         ror ser_out_temp        ;rotate right, so the carry contents, is moved into bit 7 of ser_out temp.
+000050 bb58      	out portb, ser_out_temp ;output to portb.
+000051 953a      	dec temp2               ;decrement the data bit counter
+000052 f7c9      	brne write_bit          ;If data bit counter is zero, then continue, otherwise go back and write another bit.
+         	
+000053 913f      	pop temp2               ;Pull the value of temp2 from the stack and back into temp2.
+         	
+000054 940e 008c 	call delay_baud			;Delay baud before send stop bit.
+000056 ef0f      	ldi temp, 0xff          ;Stop bit requires a high
+000057 bb08      	out portb, temp         ;Output high on pin 7.
+000058 940e 008c 	call delay_baud
+00005a 940e 008c 	call delay_baud			;Technically, this is an extra stop bit. But a single stop bit reciever will also work.
+00005c 9508      	ret
+          .include "keypad.asm"
          ;*****************
          ;wait_for_key:
          ;	This function continuously loops around, scanning
@@ -605,34 +664,34 @@ AVRASM ver. 1.74  keypad.asm Tue Sep 26 20:58:14 2017
          ;*****************
           wait_for_key:
          ;Column 1                                                                            ;2
-00002b ef0b      	ldi temp, 0xfb 		;First Column. Recall that pin 2 is the first column -> 1111 1011
-00002c ef3b      	ldi temp2, 0xfb      ;A register to compare to.
-00002d bb05      	out portc, temp      ;Output required for column 1.
-00002e 940e 0056 	call delay           ;Let output settle and capture key press.
-000030 b303      	in temp, pinc        ;When reading an input, pinc must be used, not portc.
-000031 1703      	cp temp, temp2       ;If the input, is the same as what was sent out...
-000032 f489      	brne key_pressed     ;Continue, otherwise a key has been pressed, so move to key pressed.
+00005d ef0b      	ldi temp, 0xfb 		;First Column. Recall that pin 2 is the first column -> 1111 1011
+00005e ef3b      	ldi temp2, 0xfb      ;A register to compare to.
+00005f bb05      	out portc, temp      ;Output required for column 1.
+000060 940e 00bf 	call delay           ;Let output settle and capture key press.
+000062 b303      	in temp, pinc        ;When reading an input, pinc must be used, not portc.
+000063 1703      	cp temp, temp2       ;If the input, is the same as what was sent out...
+000064 f489      	brne key_pressed     ;Continue, otherwise a key has been pressed, so move to key pressed.
          	
          ;Column 2
-000033 ef0e      	ldi temp, 0xfe
-000034 ef3e      	ldi temp2, 0xfe
-000035 bb05      	out portc, temp
-000036 940e 0056 	call delay
-000038 b303      	in temp, pinc
-000039 1703      	cp temp, temp2
-00003a f449      	brne key_pressed
+000065 ef0e      	ldi temp, 0xfe
+000066 ef3e      	ldi temp2, 0xfe
+000067 bb05      	out portc, temp
+000068 940e 00bf 	call delay
+00006a b303      	in temp, pinc
+00006b 1703      	cp temp, temp2
+00006c f449      	brne key_pressed
          
          ;Column 3	
-00003b ee0f      	ldi temp, 0xef
-00003c ee3f      	ldi temp2, 0xef
-00003d bb05      	out portc, temp
-00003e 940e 0056 	call delay
-000040 b303      	in temp, pinc
-000041 1703      	cp temp, temp2
-000042 f409      	brne key_pressed
-000043 cfe7      	rjmp wait_for_key
+00006d ee0f      	ldi temp, 0xef
+00006e ee3f      	ldi temp2, 0xef
+00006f bb05      	out portc, temp
+000070 940e 00bf 	call delay
+000072 b303      	in temp, pinc
+000073 1703      	cp temp, temp2
+000074 f409      	brne key_pressed
+000075 cfe7      	rjmp wait_for_key
           key_pressed:				;If a key is pressed, return to main loop and continue.
-000044 9508      	ret
+000076 9508      	ret
          
          ;*********************
          ;convert:
@@ -645,73 +704,130 @@ AVRASM ver. 1.74  keypad.asm Tue Sep 26 20:58:14 2017
          ;	which is incremented every loop, is taken as the output.
          ;*********************	
           Convert:
-000045 e0f0         ldi	 ZH, high(Tble<<1)    ;Set the Z pointer to the table address. The address is shifted to the right, so
-000046 ecee         ldi	 ZL, low(Tble<<1)     ;that we can access each byte from program memory individual, instead of 2 bytes at a time.
-000047 2766         clr array_count     			; start array_counter at zero
+000077 e0f1         ldi	 ZH, high(Tble<<1)    ;Set the Z pointer to the table address. The address is shifted to the right, so
+000078 e0ec         ldi	 ZL, low(Tble<<1)     ;that we can access each byte from program memory individual, instead of 2 bytes at a time.
+000079 2766         clr array_count     			; start array_counter at zero
          
           convert_loop:
-000048 770f         andi   TEMP, $7F
-000049 9134      	LPM temp2, Z  			; Now load a byte from table in memory pointed to by Z (r31:r30)
-00004a 95e3      	INC ZL
-00004b 1730         cp temp2 , Temp      ;Compare value from prgram memory (table) to scan code.
-00004c f411         brne continue_loop   ;Not equal, continue going through table.
-00004d 2f06      	MOV Temp, array_count ;Otherwise, move array counter into the temp register, which is the output.
-00004e 9508         ret
+00007a 770f         andi   TEMP, $7F
+00007b 9134      	LPM temp2, Z  			; Now load a byte from table in memory pointed to by Z (r31:r30)
+00007c 95e3      	INC ZL
+00007d 1730         cp temp2 , Temp      ;Compare value from prgram memory (table) to scan code.
+00007e f411         brne continue_loop   ;Not equal, continue going through table.
+00007f 2f06      	MOV Temp, array_count ;Otherwise, move array counter into the temp register, which is the output.
+000080 9508         ret
          
           continue_loop:				
-00004f 9563      	INC array_count	  	;Increment the array counter
-000050 3dea      	cpi ZL, low(Tble<<1)+12	;Check to see if its the end of the table (table is 12 bytes long) (0-9 + * + #) = 10+2=12 bytes
-000051 f7b1      	brne convert_loop	;If not the end of the loop, go back and check the next byte in the table.
-000052 ef0f      	ldi Temp, 0xFF    ;If it is the end of the table, then an error has occured, a wrong scan code has been obtained.
-000053 9508      	ret
-         
-         ;***********************
-         ;display:
-         ;	displays the result from convert (from the keypad) to portb.
-         ;***********************
-          display:
-000054 bb08      	out portb, temp
-000055 9508      	ret
-         
-         ;***********************
-         ;delay:
-         ;		delays the processor for a small amount of time.
-         ;		Time is about:
-         ;		256*256*4 cycles*83.3ns = 21mS (roughly).
-         ;***********************	
-          delay:
-000056 930f      	push temp
-000057 933f      	push temp2
-000058 932f      	push delay_reg
-000059 2700      	clr temp
-00005a 2733      	clr temp2
-00005b 2722      	clr delay_reg
-          inner_loop:
-00005c 950a      	dec temp
-00005d 1702      	cp temp, delay_reg
-00005e f7e9      	brne inner_loop
-          outer_loop:
-00005f 2700      	clr temp
-000060 953a      	dec temp2
-000061 1732      	cp temp2, delay_reg
-000062 f7c9      	brne inner_loop
-000063 912f      	pop delay_reg
-000064 913f      	pop temp2
-000065 910f      	pop temp
-000066 9508      	ret
-         
-         
+000081 9563      	INC array_count	  	;Increment the array counter
+000082 31e8      	cpi ZL, low(Tble<<1)+12	;Check to see if its the end of the table (table is 12 bytes long) (0-9 + * + #) = 10+2=12 bytes
+000083 f7b1      	brne convert_loop	;If not the end of the loop, go back and check the next byte in the table.
+000084 ef0f      	ldi Temp, 0xFF    ;If it is the end of the table, then an error has occured, a wrong scan code has been obtained.
+000085 9508      	ret
+         	
+         	
          ;Table containing the scan codes. The index of the scan code, represents the number on the
          ;keypad. Eg, the number 2 is 0x7C -> 0111 1100 (scan code from reading the pins). 	
           Tble:
           .db $76, $79, $7C, $6D, $3B, $3E, $2F, $5B, $5E, $4F, $73, $67
-000067 7976
-000068 6d7c
-000069 3e3b
-00006a 5b2f
-00006b 4f5e
-00006c 6773
-         	
+000086 7976
+000087 6d7c
+000088 3e3b
+000089 5b2f
+00008a 4f5e
+00008b 6773
+          .include "delays.asm"
+         
+         
+         
+         
+         
+         
+         
+         
+         
+         ;----------------------
+         ;delay_baud:
+         ;	Delays the sampler by the baud period, 104uS.
+         ;  Using the instruction set manual for avr, the following was determined:
+         ;	103uS = (205 * 6) + 5 * 83.33nS, baud rate is about 104uS
+         ;  Where 205 is the number stored in DelayBaud and 6 (2 for brne) is the number of cycles in the loop.
+         ;  The extra 5 are for the return and ldi at the start.
+         ;----------------------	
+          delay_baud: 							
+00008c ec2d      	ldi delay_reg, DelayBaud      ;Load the counter value from program memory into delay_reg, 1 cycle
+          db_l:
+00008d 952a      	dec delay_reg                 ;decrement the counter delay reg - 1 cycle
+00008e 0000      	nop                           ;nop - 1 cycle
+00008f 0000      	nop
+000090 0000      	nop
+000091 f7d9      	brne db_l                     ; if not equal to zero, redo the loop again, otherwise return (2 cycles).
+000092 9508      	ret
+         
+         
+         
+         ;--------------------
+         ;DelayBig:
+         ;	Calls a lot of 21mS delay routines
+         ;	13 Delay_more's = 80*21mS = 273mS
+         ;--------------------
+          DelayBig:
+000093 940e 00ae 	call Delay_more
+000095 940e 00ae 	call Delay_more
+000097 940e 00ae 	call Delay_more
+000099 940e 00ae 	call Delay_more
+00009b 940e 00ae 	call Delay_more
+00009d 940e 00ae 	call Delay_more
+00009f 940e 00ae 	call Delay_more
+0000a1 940e 00ae 	call Delay_more
+0000a3 940e 00ae 	call Delay_more
+0000a5 940e 00ae 	call Delay_more
+0000a7 940e 00ae 	call Delay_more
+0000a9 940e 00ae 	call Delay_more
+0000ab 940e 00ae 	call Delay_more
+0000ad 9508      	ret
+         
+         
+         
+         
+         
+         ;--------------------
+         ;delay_more:
+         ;	Uses inner and outer loop to delay
+         ; 	processor by 21mS. Each loop decrements counters,
+         ; 	from 255 down to zero.
+         ; 	Based on this:
+         ;	4 cycles times 256 * 256 * 83.3 *10e-9 = about 21mS
+         ;--------------------
+          Delay_more:
+0000ae 930f               PUSH R16						
+0000af 931f               PUSH R17
+0000b0 920f               PUSH R0
+0000b1 2400               CLR R0
+0000b2 2700               CLR R16
+0000b3 2711               CLR R17
+0000b4 950a      L1:      DEC R16
+0000b5 1100      			CPSE R16, R0
+0000b6 cffd      			RJMP L1	
+0000b7 2700      			CLR R16		
+0000b8 951a      L2:      DEC R17
+0000b9 1110               CPSE R17, R0
+0000ba cff9               RJMP L1			
+         ;
+0000bb 900f               POP R0
+0000bc 911f               POP R17
+0000bd 910f               POP R16
+0000be 9508               RET
+         
+         
+         
+0000bf 940e 00ae Delay:   call delay_more
+0000c1 9508               RET
+         
+         
+         
+         
+         
+         
          
          
          
