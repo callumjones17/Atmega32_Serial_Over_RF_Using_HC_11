@@ -1,5 +1,5 @@
 
-AVRASM ver. 1.74  rx.asm Mon Sep 25 10:16:06 2017
+AVRASM ver. 1.74  rx.asm Tue Oct 03 17:03:06 2017
 
 
          ;**********************************************************************
@@ -647,7 +647,8 @@ AVRASM ver. 1.74  rx.asm Mon Sep 25 10:16:06 2017
 00004a f431       	brne error_code         ;Otherwise there is an error, better handle that.
           	
 00004b 2f41       	mov ser_out, result		;Move the Resulting ASCII character into ser_out register
-00004c 940e 0113 	call transmit_serial    ;Transmit contents of ser_out to LCD
+         	;call transmit_serial    ;Transmit contents of ser_out to LCD
+00004c 940e 012f 	call write_to_lcd
 00004e 940e 0053  	call Delay_baud    ;Delay, give the LCD some time to write.
 000050 9508      	ret
           error_code:     				
@@ -815,7 +816,17 @@ AVRASM ver. 1.74  rx.asm Mon Sep 25 10:16:06 2017
 000111 910f               POP R16
 000112 9508               RET
          	
-         	
+         ;--------------------
+         ;transmit serial:
+         ;	Assumes a value for sending has been placed into ser_reg.
+         ;	This functions transmits a serial over portb pin 7 use rotation functions.
+         ;	The order of sending is LSB (least significant bit) first, so ser_reg is
+         ;  rotated right, and the bit to send is moved into carry. rotating ser reg temp
+         ;	right as well, will move the contents of carry into bit 7 of the 2nd register.
+         ;	this bit is then written to portb. This happens every baud period 104uS after the start bit.
+         ;	The start bit needs to be a high changing to a low, and then a stop bit is just set high.
+         ;	See serial.png on github.
+         ;-------------------	
           transmit_serial:
 000113 2755         clr ser_out_temp		;Clear a temporary varible for use.
          
@@ -846,6 +857,75 @@ AVRASM ver. 1.74  rx.asm Mon Sep 25 10:16:06 2017
 00012a 940e 0053 	call delay_baud
 00012c 940e 0053 	call delay_baud			;Technically, this is an extra stop bit. But a single stop bit reciever will also work.
 00012e 9508      	ret
+         	
+         	
+         ;************************
+         ;Setup LCD:
+         ; -This function clrs the lcd and writes: 'Key Pressed: ' + key to the LCD.
+         ;************************
+          write_to_lcd:
+00012f e04c      	ldi ser_out, 0x0C  ;Clears the screen and moves the cursor to 0,0
+000130 940e 0113 	call transmit_serial
+000132 940e 0102 	call delay_more
+         	
+000134 e44b      	ldi ser_out, 0x4b ;K
+000135 940e 0113 	call transmit_serial
+000137 940e 005a 	call delay_baud_half
+         	
+000139 e645      	ldi ser_out, 0x65 ;e
+00013a 940e 0113 	call transmit_serial
+00013c 940e 005a 	call delay_baud_half
+         	
+00013e e749      	ldi ser_out, 0x79 ;y
+00013f 940e 0113 	call transmit_serial
+000141 940e 005a 	call delay_baud_half
+         	
+000143 e240      	ldi ser_out, 0x20 ;
+000144 940e 0113 	call transmit_serial
+000146 940e 005a 	call delay_baud_half
+         	
+000148 e540      	ldi ser_out, 0x50 ;P
+000149 940e 0113 	call transmit_serial
+00014b 940e 005a 	call delay_baud_half
+         	
+00014d e742      	ldi ser_out, 0x72 ;r
+00014e 940e 0113 	call transmit_serial
+000150 940e 005a 	call delay_baud_half
+         	
+000152 e645      	ldi ser_out, 0x65 ;e
+000153 940e 0113 	call transmit_serial
+000155 940e 005a 	call delay_baud_half
+         	
+000157 e743      	ldi ser_out, 0x73 ;s
+000158 940e 0113 	call transmit_serial
+00015a 940e 005a 	call delay_baud_half
+         	
+00015c e743      	ldi ser_out, 0x73 ;s
+00015d 940e 0113 	call transmit_serial
+00015f 940e 005a 	call delay_baud_half
+         	
+000161 e645      	ldi ser_out, 0x65 ;e
+000162 940e 0113 	call transmit_serial
+000164 940e 005a 	call delay_baud_half
+         	
+000166 e644      	ldi ser_out, 0x64 ;d
+000167 940e 0113 	call transmit_serial
+000169 940e 005a 	call delay_baud_half
+         	
+00016b e34a      	ldi ser_out, 0x3a ;:
+00016c 940e 0113 	call transmit_serial
+00016e 940e 005a 	call delay_baud_half
+         	
+000170 e240      	ldi ser_out, 0x20 ;
+000171 940e 0113 	call transmit_serial
+000173 940e 005a 	call delay_baud_half
+         	
+000175 2f41      	mov ser_out, result ; Result
+000176 940e 0113 	call transmit_serial
+000178 940e 005a 	call delay_baud_half
+         	
+00017a 9508      	ret
+         
          
          
          

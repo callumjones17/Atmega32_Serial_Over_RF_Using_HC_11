@@ -145,7 +145,8 @@ read_bit:
  	brne error_code         ;Otherwise there is an error, better handle that.
  	
  	mov ser_out, result		;Move the Resulting ASCII character into ser_out register
-	call transmit_serial    ;Transmit contents of ser_out to LCD
+	;call transmit_serial    ;Transmit contents of ser_out to LCD
+	call write_to_lcd
  	call Delay_baud    ;Delay, give the LCD some time to write.
 	ret
 error_code:     				
@@ -354,6 +355,75 @@ write_bit:
 	call delay_baud
 	call delay_baud			;Technically, this is an extra stop bit. But a single stop bit reciever will also work.
 	ret
+	
+	
+;************************
+;Setup LCD:
+; -This function clrs the lcd and writes: 'Key Pressed: ' + key to the LCD.
+;************************
+write_to_lcd:
+	ldi ser_out, 0x0C  ;Clears the screen and moves the cursor to 0,0
+	call transmit_serial
+	call delay_more
+	
+	ldi ser_out, 0x4b ;K
+	call transmit_serial
+	call delay_baud_half
+	
+	ldi ser_out, 0x65 ;e
+	call transmit_serial
+	call delay_baud_half
+	
+	ldi ser_out, 0x79 ;y
+	call transmit_serial
+	call delay_baud_half
+	
+	ldi ser_out, 0x20 ;
+	call transmit_serial
+	call delay_baud_half
+	
+	ldi ser_out, 0x50 ;P
+	call transmit_serial
+	call delay_baud_half
+	
+	ldi ser_out, 0x72 ;r
+	call transmit_serial
+	call delay_baud_half
+	
+	ldi ser_out, 0x65 ;e
+	call transmit_serial
+	call delay_baud_half
+	
+	ldi ser_out, 0x73 ;s
+	call transmit_serial
+	call delay_baud_half
+	
+	ldi ser_out, 0x73 ;s
+	call transmit_serial
+	call delay_baud_half
+	
+	ldi ser_out, 0x65 ;e
+	call transmit_serial
+	call delay_baud_half
+	
+	ldi ser_out, 0x64 ;d
+	call transmit_serial
+	call delay_baud_half
+	
+	ldi ser_out, 0x3a ;:
+	call transmit_serial
+	call delay_baud_half
+	
+	ldi ser_out, 0x20 ;
+	call transmit_serial
+	call delay_baud_half
+	
+	mov ser_out, result ; Result
+	call transmit_serial
+	call delay_baud_half
+	
+	ret
+
 
 
 

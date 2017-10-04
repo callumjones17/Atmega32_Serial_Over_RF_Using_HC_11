@@ -1,28 +1,10 @@
 
-AVRASM ver. 1.74  rx.asm Wed Oct 04 19:30:30 2017
+AVRASM ver. 1.74  int_test.asm Fri Sep 29 16:08:13 2017
 
 
-         ;******************************
-         ;***	RS232 Reciver Code  ****
-         ;*****************************
-         ;This program is intened for use with the ATMEGA32,
-         ;where PORTC pin 7 is the RX pin, and PORTB will be
-         ;used to disply the incomming ASCII character.
-         ;
-         ;***Updated****
-         ;PORTB no Longer Displays the ASCII character, it now subtracts 0x30 from
-         ;the ascii value, to display the key pressed from the keypad. PORTB will
-         ;display an error if ascii is not part of the keypad values.
-         
-         ;RS232 Settings:
-         ;Baud - 9600
-         ;Stop Bit - 1 or 2 (Won't affect the program)
-         ;Data Bits - 8
-         ;No Parity Bits.
-         
-         ;2256 - Introduction into Embedded Systems - 2017
-         ;Callum Jones
-         ;RMIT
+         ; ******************************************************
+         ; BASIC .ASM template file for AVR
+         ; ******************************************************
          
           .include "C:\2256\VMLAB\include\m32def.inc"
          ;***************************************************************************
@@ -524,173 +506,189 @@ AVRASM ver. 1.74  rx.asm Wed Oct 04 19:30:30 2017
          
          
          
-          .def  temp  =r16 			;Define registers 16-19 for use as varibles
+         ; Define here the variables
+         ;
+          .def  temp  =r16
+          .def  multi =r20
+          .def  temp2 = r19
           .def result =r17
           .def delay_reg =r18
-          .def temp2 =r19
+          .def counter = r22
          
           .equ DelayBaud = 205			;These are setup for the delay function (see delay function).
           .equ DelayBaudHalf = 10
          
+         ; Define here Reset and interrupt vectors, if any
+         ;
           reset:
-000000 c010         rjmp start
+000000 c00f         rjmp start
 000001 9518         reti      ; Addr $01
 000002 9518         reti      ; Addr $02
 000003 9518         reti      ; Addr $03
-000004 9518         reti      ; Addr $04
-000005 9518         reti      ; Addr $05
-000006 9518         reti      ; Addr $06        Use 'rjmp myVector'
-000007 9518         reti      ; Addr $07        to define a interrupt vector
-000008 9518         reti      ; Addr $08
-000009 9518         reti      ; Addr $09
-00000a 9518         reti      ; Addr $0A
-00000b 9518         reti      ; Addr $0B        This is just an example
-00000c 9518         reti      ; Addr $0C        Not all MCUs have the same
-00000d 9518         reti      ; Addr $0D        number of interrupt vectors
-00000e 9518         reti      ; Addr $0E
-00000f 9518         reti      ; Addr $0F
-000010 9518         reti      ; Addr $10
+000004 940c 002d    jmp int1_handler      ; Addr $06        Use 'rjmp myVector'
+000006 9518         reti      ; Addr $07        to define a interrupt vector
+000007 9518         reti      ; Addr $08
+000008 9518         reti      ; Addr $09
+000009 9518         reti      ; Addr $0A
+00000a 9518         reti      ; Addr $0B        This is just an example
+00000b 9518         reti      ; Addr $0C        Not all MCUs have the same
+00000c 9518         reti      ; Addr $0D        number of interrupt vectors
+00000d 9518         reti      ; Addr $0E
+00000e 9518         reti      ; Addr $0F
+00000f 9518         reti      ; Addr $10
          
          ; Program starts here after Reset
          ;
           start:
-000011 0000         nop
-000012 0000         nop
+000010 0000         nop       ; Initialize here ports, stack pointer,
+000011 0000         nop       ; cleanup RAM, etc.
+000012 0000         nop       ;
+000013 0000         nop       ;
          
-         	;Begin by setting all the registers to be used to zero.
-000013 2700      	clr temp
-000014 2733      	clr temp2
-000015 2711      	clr result
-000016 2722      	clr delay_reg
-         
-000017 e50f      	ldi temp, low(RAMEND) ;Setup the stack point to the very bottom of RAM.
-000018 bf0d      	out SPL, temp          ;When an item is pushed on the stack, it moves up the RAM (ie the address is decremented),
-000019 e008      	ldi temp, high(RAMEND) ;so RAMEND is the perfect spot - completely out of the way of our code.
-00001a bf0e      	out SPH, temp
+000014 2766      	clr counter
          	
-00001b ef0f      	ldi temp, 0xFF 		;All of portb will be used as an output
-00001c bb07      	out DDRB, temp       ;So ddrb is set to 0xFF (0 for input, 1 for output).
-00001d ef0f      	ldi temp, 0xff       ;To begin with, portb is set high (all LED's on for the OUSB board).
-00001e bb08      	out PORTB, temp
+000015 e008      	ldi temp, high(RAMEND)
+000016 bf0e      	out SPH, temp
+000017 e50f      	ldi temp, low(RAMEND)
+000018 bf0d      	out SPL, temp
          	
-00001f e000      	ldi temp, 0x00  		;Portc pin7 will be used as an input, we really don't care the other pins for this example
-000020 bb04      	out DDRC, temp       ;DDRC set to 0x00 (0 for input, 1 for output).
-000021 e000      	ldi temp, 0x00	     ;Disable the internal pullup resistors.
-000022 bb05      	out PORTC, temp      ;This is done by writing 0 (1 for enable) to portc when its an input.
+000019 ef0f      	ldi temp, 0xFF
+00001a bb07      	out DDRB, temp
+00001b e000      	ldi temp, 0x00
+00001c bb08      	out PORTB, temp
+         	
+00001d bb01      	out ddrd, temp
+00001e bb02      	out portd, temp
+         	
+00001f bb04      	out ddrc, temp
+000020 bb05      	out portc, temp
+         	
+         	
+000021 e800      	ldi temp, 1<<INT1;0x40
+000022 bf0b      	out GICR, temp
+         	
+000023 b705      	in temp, MCUCR
+         	;ori temp, 0x08
+000024 e00a      	ldi temp, 1<<ISC11 | 0<<ISC10 | 1<<ISC01 | 0<<ISC00
+000025 bf05      	out MCUCR, temp
+         	
+000026 9478      	sei
+         	
+000027 2700      	clr temp
          
-         ;------------------
-         ;forever:
-         ;	This is the main loop. All it does is call the RX subroutine.
-         ;	There are no delays in this loop, because the RX pin (pin 7 of portc)
-         ;	needs to be sampled as much quicker than the baud rate for 9600. This
-         ; 	is so the start bit is detected instead of a 0 in the data. Start bit is
-         ;	represented by a change from high to low.
-         ;------------------
           forever:
-000023 0000         nop
-000024 0000         nop
-000025 0000         nop
-000026 0000         nop
-000027 940e 002a 	call rx			;RX subroutine.						
-000029 cff9      rjmp forever
+000028 0000         nop
+000029 0000         nop       ; Infinite loop.
+00002a 0000         nop       ; Define your main system
+00002b 0000         nop       ; behaviour here
+00002c cffb         rjmp forever
          
-         
-         ;------------------
-         ;rx:
-         ;	This subroutine checks for the start bit (high to low change on the RX pin).
-         ;	When no data is passing, the RX pin will be high. If the change is detected,
-         ;	go to read_serial routine, otherwise go back to the main loop.
-         ;------------------
-          rx:
-00002a b303       	in temp, PINC 				;PINC is the input location for reading PORTC, load into temp
-00002b 7800       	andi temp, 0x80			;RX pin is 7, so remove everything else, by AND'ing it with 10000000
-00002c e830       	ldi temp2, 0x80         ;Load 10000000 into temp2
-00002d 1703       	cp temp, temp2          ;If temp = temp2, it means the RX pin is still high, so no start bit.
-00002e f411       	brne read_serial        ;Otherwise, start bit is detected, so go and read serial data.
-00002f e000       	ldi temp, 0x00
-000030 9508      	ret
+          int1_handler:
+00002d e000      	ldi temp, 0<<INT1
+00002e bf0b      	out GICR, temp
+         	;call read_serial
+00002f 6011      	ori result, 0x01
+000030 940e 0097 	call display
+000032 940e 0099 	call delay_baud
+000034 e010      	ldi result, 0x00
+000035 940e 0097 	call display
+000037 940e 0099 	call delay_baud
+000039 940e 0099 	call delay_baud
+00003b 940e 0099 	call delay_baud
+00003d 940e 0099 	call delay_baud
+00003f 940e 0099 	call delay_baud
+000041 940e 0099 	call delay_baud
+000043 940e 0099 	call delay_baud
+000045 940e 0099 	call delay_baud
+000047 940e 0099 	call delay_baud
+000049 940e 0099 	call delay_baud
+00004b 940e 0099 	call delay_baud
+00004d 940e 0099 	call delay_baud
+00004f 940e 0099 	call delay_baud
+000051 940e 0099 	call delay_baud
+000053 940e 0099 	call delay_baud
+000055 940e 0099 	call delay_baud
+000057 e800      	ldi temp, 1<<INT1
+000058 bf0b      	out GICR, temp
+000059 9518      	reti
+         	
+          Delay:
+00005a 930f      	push r16
+00005b 931f      	push r17
+00005c 932f      	push r18
+00005d 2700      	clr r16
+00005e 2711      	clr r17
+00005f 2722      	clr r18
+          inner:
+000060 950a         dec r16
+000061 0000         nop
+000062 0000         nop
+000063 0000         nop
+000064 0000         nop
+000065 0000         nop
+000066 0000         nop
+000067 1302         cpse r16, r18
+000068 cff7         rjmp inner
+000069 2700         clr r16
+          outer:
+00006a 951a      	dec r17
+00006b 0000      	nop
+00006c 0000      	nop
+00006d 0000      	nop
+00006e 0000      	nop
+00006f 0000      	nop
+000070 0000      	nop
+000071 0000      	nop
+000072 1312      	cpse r17, r18
+000073 cfec      	rjmp inner
+000074 912f      	pop r18
+000075 911f      	pop r17
+000076 910f      	pop r16
+000077 9508      	ret
          	
          	
-         ;------------------
-         ;read_serial:
-         ;	Start bit has already been detected, now the next 8 baud rates must be read.
-         ;	The baud rate for this example is 9600, so the period between the bits sent
-         ;	is 1/9600 = 104.2uS. So after the start bit, after 104uS the first data bit
-         ;	will be sent, and after another 104uS, the 2nd data and so on. Please see
-         ;	github for an image called serial.png for a better view. To read this serial,
-         ;	the processor needs to sample every baud period, however the processor should
-         ;	also delay for half a period, so that it's not sampling on the transition,
-         ;	between data bits.
-         ;------------------	
           read_serial:
-000031 940e 006c 	call delay_baud_half 	;Shifts our sampler, so the sampler is clear of transitions.
+000078 940e 00a0 	call delay_baud_half 	;Shifts our sampler, so the sampler is clear of transitions.
          		
-000033 e038      	ldi temp2, 0x08			;Number of data bits to detect.		
+00007a e038      	ldi temp2, 0x08			;Number of data bits to detect.		
           read_bit:			
-000034 940e 0065 	call delay_baud         ;Delay by baud_period
-000036 b303      	in temp, PINC           ;Read from portc, into temp
-000037 7800      	andi temp, 0x80         ;AND result with 10000000, so only pin 7 remains.
-000038 1f00      	rol temp                ;Rotate bit 7 from temp into  carry.   (ie -> 1000 0000 -> C = 1, temp = 0000 00000)  Rotating will move all bits to the left
-000039 9517      	ror result              ;Rotate bit from carry into bit 7 of result (ie -> 0000 0000 C = 1 -> result = 1000 0000) Rotating will move all bits to the right
-00003a 953a      	dec temp2               ;Decrement our data bit counter
-00003b f7c1      	brne read_bit           ;If no more bits, then continue on, otherwise go back and read the next bit.
+00007b 940e 0099 	call delay_baud         ;Delay by baud_period
+00007d b300      	in temp, PINd           ;Read from portc, into temp
+00007e 7008      	andi temp, 0x08         ;AND result with 10000000, so only pin 7 remains.
+00007f 1f00      	rol temp                ;Rotate bit 7 from temp into  carry.   (ie -> 1000 0000 -> C = 1, temp = 0000 00000)  Rotating will move all bits to the left
+000080 1f00      	rol temp 	;6
+000081 1f00      	rol temp 	;5
+000082 1f00      	rol temp 	;4
+000083 1f00      	rol temp 	;3
+000084 9517      	ror result              ;Rotate bit from carry into bit 7 of result (ie -> 0000 0000 C = 1 -> result = 1000 0000) Rotating will move all bits to the right
+000085 953a      	dec temp2               ;Decrement our data bit counter
+000086 f7a1      	brne read_bit           ;If no more bits, then continue on, otherwise go back and read the next bit.
          	
-00003c 940e 0065 	call delay_baud         ;Delay by baud period. After the data bits, we should expect a stop bit (HIGH).
-00003e b303      	in temp, PINC           ;Read portc into temp
-00003f 7800       	andi temp, 0x80         ;Only interested in pin7, so and with 1000 0000
-000040 e830       	ldi temp2, 0x80         ;Load temp2 with comparison
-000041 1703       	cp temp, temp2          ;Compare temp2 with temp, if they are equal, then RX is high and stop bit has been recived.
-000042 f439       	brne error_code         ;Otherwise there is an error, better handle that.
+000087 940e 0099 	call delay_baud         ;Delay by baud period. After the data bits, we should expect a stop bit (HIGH).
+000089 b300      	in temp, PINd           ;Read portc into temp
+00008a 7008       	andi temp, 0x08         ;Only interested in pin7, so and with 1000 0000
+00008b e038       	ldi temp2, 0x08         ;Load temp2 with comparison
+00008c 1703       	cp temp, temp2          ;Compare temp2 with temp, if they are equal, then RX is high and stop bit has been recived.
+00008d f439       	brne error_code         ;Otherwise there is an error, better handle that.
           	
-000043 940e 006c  	call Delay_baud_half    ;Delay to let things settle
-000045 940e 004c  	call Display            ;Display the result on portB
-000047 940e 006c  	call Delay_baud_half
-000049 9508      	ret
+00008e 940e 00a0  	call Delay_baud_half    ;Delay to let things settle
+000090 940e 0097  	call Display            ;Display the result on portB
+000092 940e 00a0  	call Delay_baud_half
+000094 9508      	ret
           error_code:     				
-00004a e515      	ldi result, 0x55        ;I have decided to use 0x55 as the error. On the OUSB board, this turns on all the RED LED's
-00004b 9508      	ret
+000095 e515      	ldi result, 0x55        ;I have decided to use 0x55 as the error. On the OUSB board, this turns on all the RED LED's
+000096 9508      	ret
          	
          	
          ;-----------------------
          ;display:
          	;Display the result (ascii code) onto portb.
-         	;****Updated, no longer displays ascii code, but the number of the key pressed, otherwise error.****
          ;-----------------------	
-          Display:
-00004c e203      	ldi temp, 0x23 ;ASCII for #
-00004d 1701      	cp temp, result ;Check if result is equal to ascii #
-00004e f419      	brne check_star ;if not, check for star
-00004f e01b      	ldi result, 0x0B ;Decimal value for #
-000050 940c 0063 	jmp display_char ;Display the decimal on portb.
+          Display:            			
+000097 bb18      	out portb, result      ;Recall the result was rotated into result register, so output to portb.
+000098 9508      	ret
          	
-          check_star:
-000052 e20a      	ldi temp, 0x2a ;ASCII for *
-000053 1701      	cp temp, result ;Check if result is equal to ascii *
-000054 f419      	brne check_number ;If not, check for number
-000055 e01a      	ldi result, 0x0A ;Decimal value for *
-000056 940c 0063 	jmp display_char ;Display decimal on portb
-         
-          check_number:
-000058 e209      	ldi temp, 0x29 ;Lowest Number - 1
-000059 1701      	cp temp, result ;compare result with smallest possible number subtract 1.
-00005a f438      	brsh display_error ;If <= 0x29, goto display error, otherwise continue.
          	
-00005b e400      	ldi temp, 0x40 ;Largest Number + 1
-00005c 1710      	cp result, temp  ;Compare largest possible number plus 1 with result.
-00005d f420      	brsh display_error ;If >= 0x40, goto display error, otherwise continue.
-         	
-00005e e300      	ldi temp, 0x30 		;Ascii maps into decimal very easily, 0x31 = 1, 0x35 = 5, subtract 30.
-00005f 1b10      	sub result, temp
-000060 940c 0063 	jmp display_char		;Display in decimal on portb.	
-         	
-          display_error: 			
-000062 ef1f      	ldi result, 0xff     ;If error occurs this is the error code, 0xff
-         
-          display_char:	       			
-000063 bb18      	out portb, result      ;Display contents of result onto portb.
-000064 9508      	ret
-         	
-         
          ;----------------------
          ;delay_baud:
          ;	Delays the sampler by the baud period, 104uS.
@@ -700,14 +698,14 @@ AVRASM ver. 1.74  rx.asm Wed Oct 04 19:30:30 2017
          ;  The extra 5 are for the return and ldi at the start.
          ;----------------------	
           delay_baud: 							
-000065 ec2d      	ldi delay_reg, DelayBaud      ;Load the counter value from program memory into delay_reg, 1 cycle
+000099 ec2d      	ldi delay_reg, DelayBaud      ;Load the counter value from program memory into delay_reg, 1 cycle
           db_l:
-000066 952a      	dec delay_reg                 ;decrement the counter delay reg - 1 cycle
-000067 0000      	nop                           ;nop - 1 cycle
-000068 0000      	nop
-000069 0000      	nop
-00006a f7d9      	brne db_l                     ; if not equal to zero, redo the loop again, otherwise return (2 cycles).
-00006b 9508      	ret
+00009a 952a      	dec delay_reg                 ;decrement the counter delay reg - 1 cycle
+00009b 0000      	nop                           ;nop - 1 cycle
+00009c 0000      	nop
+00009d 0000      	nop
+00009e f7d9      	brne db_l                     ; if not equal to zero, redo the loop again, otherwise return (2 cycles).
+00009f 9508      	ret
          
          ;----------------------
          ;delay_baud half:
@@ -721,30 +719,14 @@ AVRASM ver. 1.74  rx.asm Wed Oct 04 19:30:30 2017
          ;  and first data bit.
          ;----------------------		
           delay_baud_half: 							
-00006c e02a      	ldi delay_reg, DelayBaudHalf      ;Load the counter value from program memory into delay_reg, 1 cycle
+0000a0 e02a      	ldi delay_reg, DelayBaudHalf      ;Load the counter value from program memory into delay_reg, 1 cycle
           db_h_l:
-00006d 952a      	dec delay_reg                 ;decrement the counter delay reg - 1 cycle
-00006e 0000      	nop                           ;nop - 1 cycle
-00006f 0000      	nop
-000070 0000      	nop
-000071 f7a1      	brne db_l                     ; if not equal to zero, redo the loop again, otherwise return (2 cycles).
-000072 9508      	ret
-         
-         
-         
-         
-         
-         
-         
-         
-         
-         
-         
-         
-         
-         
-         
-         
+0000a1 952a      	dec delay_reg                 ;decrement the counter delay reg - 1 cycle
+0000a2 0000      	nop                           ;nop - 1 cycle
+0000a3 0000      	nop
+0000a4 0000      	nop
+0000a5 f7d9      	brne db_h_l                     ; if not equal to zero, redo the loop again, otherwise return (2 cycles).
+0000a6 9508      	ret
          
          
          

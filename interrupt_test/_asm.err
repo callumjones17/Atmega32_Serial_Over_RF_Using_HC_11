@@ -1,0 +1,17 @@
+Creating   'int_test.eep'
+Creating   'int_test.hex'
+Creating   'int_test.obj'
+Creating   'int_test.lis'
+Creating   'int_test.map'
+
+Assembling 'int_test.asm'
+Including  'C:\2256\VMLAB\include\m32def.inc'
+
+Program memory usage:
+Code             :  167 words
+Constants (dw/db):    0 words
+Unused           :    0 words
+Total            :  167 words
+
+Assembly complete with no errors.
+Deleting   'int_test.eep'

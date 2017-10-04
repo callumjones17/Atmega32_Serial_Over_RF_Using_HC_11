@@ -1,5 +1,5 @@
 
-AVRASM ver. 1.74  rx.asm Tue Oct 03 17:03:06 2017
+AVRASM ver. 1.74  int_test.asm Fri Sep 29 16:08:13 2017
 
 
 EQU  sreg         0000003f
@@ -371,29 +371,25 @@ EQU  aciaddr      00000024
 EQU  twsiaddr     00000026
 EQU  spmraddr     00000028
 DEF  temp         r16
+DEF  multi        r20
+DEF  temp2        r19
 DEF  result       r17
 DEF  delay_reg    r18
-DEF  temp2        r19
-DEF  ser_out      r20
-DEF  ser_out_temp r21
-DEF  debug        r22
+DEF  counter      r22
 EQU  delaybaud    000000cd
 EQU  delaybaudhalf 0000000a
 CSEG reset        00000000
-CSEG start        00000011
-CSEG forever      0000002b
-CSEG rx           00000032
-CSEG read_serial  00000039
-CSEG read_bit     0000003c
-CSEG error_code   00000051
-CSEG delay_baud   00000053
-CSEG db_l         00000054
-CSEG delay_baud_half 0000005a
-CSEG db_h_l       0000005b
-CSEG delay        00000061
-CSEG delay_more   00000102
-CSEG l1           00000108
-CSEG l2           0000010c
-CSEG transmit_serial 00000113
-CSEG write_bit    0000011e
-CSEG write_to_lcd 0000012f
+CSEG start        00000010
+CSEG forever      00000028
+CSEG int1_handler 0000002d
+CSEG delay        0000005a
+CSEG inner        00000060
+CSEG outer        0000006a
+CSEG read_serial  00000078
+CSEG read_bit     0000007b
+CSEG error_code   00000095
+CSEG display      00000097
+CSEG delay_baud   00000099
+CSEG db_l         0000009a
+CSEG delay_baud_half 000000a0
+CSEG db_h_l       000000a1

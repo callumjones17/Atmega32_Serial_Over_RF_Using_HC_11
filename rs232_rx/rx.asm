@@ -4,6 +4,11 @@
 ;This program is intened for use with the ATMEGA32,
 ;where PORTC pin 7 is the RX pin, and PORTB will be
 ;used to disply the incomming ASCII character.
+;
+;***Updated****
+;PORTB no Longer Displays the ASCII character, it now subtracts 0x30 from
+;the ascii value, to display the key pressed from the keypad. PORTB will
+;display an error if ascii is not part of the keypad values.
 
 ;RS232 Settings:
 ;Baud - 9600
@@ -147,10 +152,41 @@ error_code:
 ;-----------------------
 ;display:
 	;Display the result (ascii code) onto portb.
+	;****Updated, no longer displays ascii code, but the number of the key pressed, otherwise error.****
 ;-----------------------	
-Display:            			
-	out portb, result      ;Recall the result was rotated into result register, so output to portb.
-	ret	
+Display:
+	ldi temp, 0x23 ;ASCII for #
+	cp temp, result ;Check if result is equal to ascii #
+	brne check_star ;if not, check for star
+	ldi result, 0x0B ;Decimal value for #
+	jmp display_char ;Display the decimal on portb.
+	
+check_star:
+	ldi temp, 0x2a ;ASCII for *
+	cp temp, result ;Check if result is equal to ascii *
+	brne check_number ;If not, check for number
+	ldi result, 0x0A ;Decimal value for *
+	jmp display_char ;Display decimal on portb
+
+check_number:
+	ldi temp, 0x29 ;Lowest Number - 1
+	cp temp, result ;compare result with smallest possible number subtract 1.
+	brsh display_error ;If <= 0x29, goto display error, otherwise continue.
+	
+	ldi temp, 0x40 ;Largest Number + 1
+	cp result, temp  ;Compare largest possible number plus 1 with result.
+	brsh display_error ;If >= 0x40, goto display error, otherwise continue.
+	
+	ldi temp, 0x30 		;Ascii maps into decimal very easily, 0x31 = 1, 0x35 = 5, subtract 30.
+	sub result, temp
+	jmp display_char		;Display in decimal on portb.	
+	
+display_error: 			
+	ldi result, 0xff     ;If error occurs this is the error code, 0xff
+
+display_char:	       			
+	out portb, result      ;Display contents of result onto portb.
+	ret
 	
 
 ;----------------------
@@ -191,6 +227,8 @@ db_h_l:
 	nop
 	brne db_l                     ; if not equal to zero, redo the loop again, otherwise return (2 cycles).
 	ret
+
+
 
 
 

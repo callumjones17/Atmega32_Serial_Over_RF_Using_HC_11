@@ -8,10 +8,10 @@ Assembling 'rx.asm'
 Including  'C:\2256\VMLAB\include\m32def.inc'
 
 Program memory usage:
-Code             :   92 words
+Code             :  115 words
 Constants (dw/db):    0 words
 Unused           :    0 words
-Total            :   92 words
+Total            :  115 words
 
 Assembly complete with no errors.
 Deleting   'rx.eep'
