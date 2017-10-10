@@ -35,4 +35,5 @@ two projects which implement the first levels code, and finally, the final proje
   -This is the official report written for this project.
   
   ### Talk_to_OUSB
-  -This folder contains the Ardunino Nano code, that was used to test the Serial in and Serial out functions of the OUSB board. It assumes a baud of 9600, 8 data bits, no parity and 1 stop bit.
+  -This folder contains the Ardunino Nano code, that was used to test the Serial in and Serial out functions of the OUSB board. It assumes a baud of 9600, 8 data bits, no parity and 1 stop bit.    
+  -I realised after coding these two programs up, they could have been put into one program, but it really doesn't matter.
