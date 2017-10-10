@@ -1,6 +1,6 @@
 #include <SoftwareSerial.h>
 
-SoftwareSerial OUSB(7,8); // RX, TX
+SoftwareSerial OUSB(7,8); // RX, TX, OUSB connected to Pin 7
 
 void setup() {
   // put your setup code here, to run once:
