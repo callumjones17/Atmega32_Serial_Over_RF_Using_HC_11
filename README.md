@@ -18,6 +18,7 @@ two projects which implement the first levels code, and finally, the final proje
 # Level 3:
   -Full Duplex (not finished yet).  
   
+## Other Stuff to see:  
   Along with a written report (Report.pdf), there are three folders which contain flowcharts,
   block diagrams, pictures and videos of the project.  
   
