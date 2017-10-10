@@ -16,4 +16,19 @@ two projects which implement the first levels code, and finally, the final proje
   -rs232_rx   
 
 # Level 3:
-  -Full Duplex (not finished yet).   
+  -Full Duplex (not finished yet).  
+  
+  Along with a written report (Report.pdf), there are three folders which contain flowcharts,
+  block diagrams, pictures and videos of the project.  
+  
+  # Pictures:
+  -Contains Pictures taken during the testing phase.
+  
+  # Videos:
+  -Contains videos of the working project.
+  
+  # Diagrams:
+  -Contains flowcharts, block diagrams and wiring diagrams.
+  
+  # Report.pdf
+  -This is the official report written for this project.
