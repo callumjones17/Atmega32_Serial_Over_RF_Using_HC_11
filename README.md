@@ -11,9 +11,9 @@ two projects which implement the first levels code, and finally, the final proje
   -intterupt_test: Code demonstrates how to use an external interrupt on the atmega32   
  
 ### Level 2:
-  -TX_WithKeypad   
-  -rs232_rx_lcd     
-  -rs232_rx   
+  -TX_WithKeypad: Code transmits ascii characters, based on a key pressed from the 4x3 keypad     
+  -rs232_rx: Code receives ascii bytes and displays them on portb LED's.     
+  -rs232_rx_lcd: Code receives ascii bytes and displays them to a serial LCD.       
 
 ### Level 3:
   -Full Duplex (not finished yet).  
